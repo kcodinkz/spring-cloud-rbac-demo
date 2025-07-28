@@ -123,19 +123,10 @@ docker-compose ps
 
 ```bash
 # PostgreSQL
-docker run -d \
-  --name rbac-postgres \
-  -e POSTGRES_DB=rbac_system \
-  -e POSTGRES_USER=rbac_user \
-  -e POSTGRES_PASSWORD=rbac123456 \
-  -p 5432:5432 \
-  postgres:15
+docker run -d --name rbac-postgres -e POSTGRES_DB=rbac_system  -e POSTGRES_USER=rbac_user -e POSTGRES_PASSWORD=rbac123456 -p 5432:5432 postgres:15
 
 # Redis
-docker run -d \
-  --name rbac-redis \
-  -p 6379:6379 \
-  redis:7-alpine
+docker run -d --name rbac-redis -p 6379:6379 redis:7-alpine
 ```
 
 ### 3. 初始化数据库
