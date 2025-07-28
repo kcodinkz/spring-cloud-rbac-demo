@@ -1,0 +1,207 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  
+  # 强制使用Netty而不是Tomcat
+  main:
+    web-application-type: reactive
+  
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 认证服务路由
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: TenantContextFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY
+        
+        # 用户服务路由
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: TenantContextFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY
+        
+        # 权限服务路由
+        - id: permission-service
+          uri: lb://permission-service
+          predicates:
+            - Path=/api/permissions/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: TenantContextFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY
+        
+        # 租户服务路由
+        - id: tenant-service
+          uri: lb://tenant-service
+          predicates:
+            - Path=/api/tenants/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: TenantContextFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY
+        
+        # 文件服务路由
+        - id: file-service
+          uri: lb://file-service
+          predicates:
+            - Path=/api/files/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: TenantContextFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY
+        
+        # Swagger文档路由
+        - id: swagger-ui
+          uri: lb://auth-service
+          predicates:
+            - Path=/swagger-ui/**
+          filters:
+            - StripPrefix=0
+        
+        - id: swagger-api-docs
+          uri: lb://auth-service
+          predicates:
+            - Path=/v3/api-docs/**
+          filters:
+            - StripPrefix=0
+      
+      # 全局过滤器配置
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 10
+            redis-rate-limiter.burstCapacity: 20
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET,POST,PUT,DELETE
+  
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 6
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+# Eureka客户端配置
+eureka:
+  client:
+    service-url:
+      defaultZone: http://admin:admin123@localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+
+# 日志配置
+logging:
+  level:
+    com.hoxkar: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# JWT配置
+jwt:
+  secret: your-secret-key-here-must-be-at-least-256-bits-long-for-security
+  expiration: 3600000  # 1小时
+  refresh-expiration: 604800000  # 7天
+
+# 网关配置
+gateway:
+  # 限流配置
+  rate-limit:
+    enabled: true
+    default-limit: 100
+    burst-capacity: 200
+  
+  # 熔断配置
+  circuit-breaker:
+    enabled: true
+    timeout: 5000
+    failure-threshold: 5
+    recovery-timeout: 10000
+  
+  # 跨域配置
+  cors:
+    allowed-origins: "*"
+    allowed-methods: "*"
+    allowed-headers: "*"
+    allow-credentials: true
+    max-age: 3600 

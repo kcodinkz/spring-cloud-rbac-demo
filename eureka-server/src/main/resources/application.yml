@@ -1,0 +1,66 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+  
+  # 安全配置
+  security:
+    user:
+      name: admin
+      password: admin123
+
+# Eureka服务器配置
+eureka:
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+  
+  client:
+    # 不向自己注册
+    register-with-eureka: false
+    # 不从自己获取注册信息
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${spring.security.user.name}:${spring.security.user.password}@${eureka.instance.hostname}:${server.port}/eureka/
+  
+  server:
+    # 关闭自我保护机制（开发环境）
+    enable-self-preservation: false
+    # 清理无效节点的时间间隔（毫秒）
+    eviction-interval-timer-in-ms: 10000
+    # 响应缓存更新时间间隔（毫秒）
+    response-cache-update-interval-ms: 3000
+    # 是否启用响应缓存
+    use-read-only-response-cache: false
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,eureka
+  endpoint:
+    health:
+      show-details: always
+    eureka:
+      enabled: true
+
+# 日志配置
+logging:
+  level:
+    com.netflix.eureka: DEBUG
+    com.netflix.discovery: DEBUG
+    org.springframework.cloud.netflix.eureka: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 应用信息
+info:
+  app:
+    name: Eureka Server
+    description: 多租户RBAC系统服务注册中心
+    version: 1.0.0
+    author: Hoxkar Team 

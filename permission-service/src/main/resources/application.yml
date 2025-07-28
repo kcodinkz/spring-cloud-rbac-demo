@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: permission-service
+  
+  # 数据库配置
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rbac_system
+    username: rbac_user
+    password: rbac123456
+    driver-class-name: org.postgresql.Driver
+  
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      database: 6
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+# JWT配置
+jwt:
+  secret: your-secret-key-here-must-be-at-least-256-bits-long-for-security
+  expiration: 3600000  # 1小时
+  refresh-expiration: 2592000000  # 30天
+
+# 服务器配置
+server:
+  port: 8083
+
+# Eureka客户端配置
+eureka:
+  client:
+    service-url:
+      defaultZone: http://admin:admin123@localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+# 日志配置
+logging:
+  level:
+    com.hoxkar: DEBUG
+    org.springframework.security: DEBUG 
