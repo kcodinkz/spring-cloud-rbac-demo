@@ -1,6 +1,6 @@
-<!--
+
 多语言入口 | Language: [English](README.md) | [简体中文](README.zh.md) | [Қазақша](README.kz.md)
--->
+
 
 # Spring Cloud RBAC 多租户管理系统
 

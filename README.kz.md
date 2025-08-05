@@ -1,6 +1,6 @@
-<!--
+2
 Көптілділік | Language: [English](README.md) | [简体中文](README.zh.md) | [Қазақша](README.kz.md)
--->
+
 
 # Spring Cloud RBAC Көп жалдаушыға арналған басқару жүйесі
 
