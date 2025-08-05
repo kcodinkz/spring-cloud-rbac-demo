@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 
+// Create Tenant Request DTO
 /**
  * 创建租户请求DTO
  */
@@ -19,79 +20,79 @@ import java.time.LocalDateTime;
 public class CreateTenantRequest {
     
     /**
-     * 租户代码
+     * Tenant code // 租户代码
      */
-    @NotBlank(message = "租户代码不能为空")
-    @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "租户代码只能包含字母、数字、下划线和连字符")
-    @Size(min = 3, max = 50, message = "租户代码长度必须在3-50个字符之间")
+    @NotBlank(message = "Tenant code cannot be empty") // 租户代码不能为空
+    @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Tenant code can only contain letters, numbers, underscore, and hyphen") // 租户代码只能包含字母、数字、下划线和连字符
+    @Size(min = 3, max = 50, message = "Tenant code length must be between 3 and 50 characters") // 租户代码长度必须在3-50个字符之间
     private String tenantCode;
     
     /**
-     * 租户名称
+     * Tenant name // 租户名称
      */
-    @NotBlank(message = "租户名称不能为空")
-    @Size(max = 100, message = "租户名称长度不能超过100个字符")
+    @NotBlank(message = "Tenant name cannot be empty") // 租户名称不能为空
+    @Size(max = 100, message = "Tenant name length cannot exceed 100 characters") // 租户名称长度不能超过100个字符
     private String tenantName;
     
     /**
-     * 租户描述
+     * Tenant description // 租户描述
      */
-    @Size(max = 500, message = "租户描述长度不能超过500个字符")
+    @Size(max = 500, message = "Tenant description length cannot exceed 500 characters") // 租户描述长度不能超过500个字符
     private String description;
     
     /**
-     * 联系人
+     * Contact person // 联系人
      */
-    @Size(max = 50, message = "联系人长度不能超过50个字符")
+    @Size(max = 50, message = "Contact person length cannot exceed 50 characters") // 联系人长度不能超过50个字符
     private String contactPerson;
     
     /**
-     * 联系邮箱
+     * Contact email // 联系邮箱
      */
-    @Email(message = "联系邮箱格式不正确")
+    @Email(message = "Invalid contact email format") // 联系邮箱格式不正确
     private String contactEmail;
     
     /**
-     * 联系电话
+     * Contact phone // 联系电话
      */
-    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "联系电话格式不正确")
+    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "Invalid contact phone format") // 联系电话格式不正确
     private String contactPhone;
     
     /**
-     * 地址
+     * Address // 地址
      */
-    @Size(max = 200, message = "地址长度不能超过200个字符")
+    @Size(max = 200, message = "Address length cannot exceed 200 characters") // 地址长度不能超过200个字符
     private String address;
     
     /**
-     * 域名
+     * Domain // 域名
      */
-    @Pattern(regexp = "^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", message = "域名格式不正确")
+    @Pattern(regexp = "^[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", message = "Invalid domain format") // 域名格式不正确
     private String domain;
     
     /**
      * Logo URL
      */
-    @Size(max = 200, message = "Logo URL长度不能超过200个字符")
+    @Size(max = 200, message = "Logo URL length cannot exceed 200 characters") // Logo URL长度不能超过200个字符
     private String logoUrl;
     
     /**
-     * 最大用户数
+     * Max users // 最大用户数
      */
     private Integer maxUsers;
     
     /**
-     * 订阅计划
+     * Subscription plan // 订阅计划
      */
     private String subscriptionPlan;
     
     /**
-     * 订阅开始日期
+     * Subscription start date // 订阅开始日期
      */
     private LocalDateTime subscriptionStartDate;
     
     /**
-     * 订阅结束日期
+     * Subscription end date // 订阅结束日期
      */
     private LocalDateTime subscriptionEndDate;
 } 

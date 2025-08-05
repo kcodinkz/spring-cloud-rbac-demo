@@ -8,8 +8,9 @@ import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
+// Permission Entity
 /**
- * 权限实体
+ * Permission entity // 权限实体
  */
 @Data
 @NoArgsConstructor
@@ -65,7 +66,7 @@ public class Permission {
     private LocalDateTime updatedAt;
     
     @ManyToMany(mappedBy = "permissions", fetch = FetchType.LAZY)
-    private List<Role> roles;
+    private java.util.List<Role> roles;
     
     @PrePersist
     protected void onCreate() {

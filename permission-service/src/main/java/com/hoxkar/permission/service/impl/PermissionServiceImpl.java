@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// Permission Service Implementation
 /**
  * 权限服务实现类
  */
@@ -38,20 +39,20 @@ public class PermissionServiceImpl implements PermissionService {
     private final PermissionRepository permissionRepository;
     private final UserRoleRepository userRoleRepository;
     
-    // 角色管理
+    // Role Management
     @Override
     @Transactional
     public ApiResponse<RoleVO> createRole(CreateRoleRequest request) {
         try {
-            // 设置租户上下文
+            // Set tenant context
             TenantContext.setTenantId(request.getTenantId());
             
-            // 检查角色代码是否已存在
+            // Check if role code already exists
             if (roleRepository.existsByTenantIdAndRoleCode(Long.valueOf(request.getTenantId()), request.getRoleCode())) {
-                throw BusinessException.of("角色代码已存在");
+                throw BusinessException.of("Role code already exists");
             }
             
-            // 创建角色实体
+            // Create role entity
             Role role = new Role();
             role.setTenantId(Long.valueOf(request.getTenantId()));
             role.setRoleName(request.getRoleName());
@@ -60,22 +61,22 @@ public class PermissionServiceImpl implements PermissionService {
             role.setIsSystem(request.getIsSystem());
             role.setStatus("ACTIVE");
             
-            // 保存角色
+            // Save role
             Role savedRole = roleRepository.save(role);
             
-            // 分配权限
+            // Assign permissions
             if (request.getPermissionIds() != null && !request.getPermissionIds().isEmpty()) {
                 assignPermissionsToRole(savedRole.getId(), request.getPermissionIds());
             }
             
-            log.info("创建角色成功: {}", savedRole.getRoleName());
-            return ApiResponse.success("角色创建成功", convertToRoleVO(savedRole));
+            log.info("Role created successfully: {}", savedRole.getRoleName());
+            return ApiResponse.success("Role created successfully", convertToRoleVO(savedRole));
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("创建角色失败: ", e);
-            throw BusinessException.of("创建角色失败");
+            log.error("Failed to create role: ", e);
+            throw BusinessException.of("Failed to create role");
         } finally {
             TenantContext.clear();
         }
@@ -85,27 +86,27 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<RoleVO> updateRole(Long roleId, UpdateRoleRequest request) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找角色
+            // Find role
             Role role = roleRepository.findById(roleId)
-                    .orElseThrow(() -> BusinessException.of("角色不存在"));
+                    .orElseThrow(() -> BusinessException.of("Role not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限操作此角色");
+                throw BusinessException.of("No permission to operate this role");
             }
             
-            // 检查角色代码是否已被其他角色使用
+            // Check if role code is already used by another role
             if (request.getRoleCode() != null && !request.getRoleCode().equals(role.getRoleCode())) {
                 if (roleRepository.existsByTenantIdAndRoleCode(Long.valueOf(tenantId), request.getRoleCode())) {
-                    throw BusinessException.of("角色代码已被其他角色使用");
+                    throw BusinessException.of("Role code is already used by another role");
                 }
                 role.setRoleCode(request.getRoleCode());
             }
             
-            // 更新角色信息
+            // Update role information
             if (request.getRoleName() != null) {
                 role.setRoleName(request.getRoleName());
             }
@@ -116,22 +117,22 @@ public class PermissionServiceImpl implements PermissionService {
                 role.setStatus(request.getStatus());
             }
             
-            // 保存角色
+            // Save role
             Role updatedRole = roleRepository.save(role);
             
-            // 更新权限分配
+            // Update permission assignment
             if (request.getPermissionIds() != null) {
                 assignPermissionsToRole(roleId, request.getPermissionIds());
             }
             
-            log.info("更新角色成功: {}", updatedRole.getRoleName());
-            return ApiResponse.success("角色更新成功", convertToRoleVO(updatedRole));
+            log.info("Role updated successfully: {}", updatedRole.getRoleName());
+            return ApiResponse.success("Role updated successfully", convertToRoleVO(updatedRole));
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("更新角色失败: ", e);
-            throw BusinessException.of("更新角色失败");
+            log.error("Failed to update role: ", e);
+            throw BusinessException.of("Failed to update role");
         }
     }
     
@@ -139,50 +140,50 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> deleteRole(Long roleId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找角色
+            // Find role
             Role role = roleRepository.findById(roleId)
-                    .orElseThrow(() -> BusinessException.of("角色不存在"));
+                    .orElseThrow(() -> BusinessException.of("Role not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限操作此角色");
+                throw BusinessException.of("No permission to operate this role");
             }
             
-            // 检查是否为系统角色
+            // Check if it's a system role
             if (role.getIsSystem()) {
-                throw BusinessException.of("系统角色不能删除");
+                throw BusinessException.of("System roles cannot be deleted");
             }
             
-            // 删除角色
+            // Delete role
             roleRepository.delete(role);
             
-            log.info("角色 {} 删除成功", role.getRoleName());
+            log.info("Role {} deleted successfully", role.getRoleName());
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("删除角色失败: ", e);
-            throw BusinessException.of("删除角色失败");
+            log.error("Failed to delete role: ", e);
+            throw BusinessException.of("Failed to delete role");
         }
     }
     
     @Override
     public ApiResponse<RoleVO> getRoleById(Long roleId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找角色
+            // Find role
             Role role = roleRepository.findById(roleId)
-                    .orElseThrow(() -> BusinessException.of("角色不存在"));
+                    .orElseThrow(() -> BusinessException.of("Role not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限查看此角色");
+                throw BusinessException.of("No permission to view this role");
             }
             
             return ApiResponse.success(convertToRoleVO(role));
@@ -190,38 +191,38 @@ public class PermissionServiceImpl implements PermissionService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取角色失败: ", e);
-            throw BusinessException.of("获取角色失败");
+            log.error("Failed to get role: ", e);
+            throw BusinessException.of("Failed to get role");
         }
     }
     
     @Override
     public ApiResponse<RoleVO> getRoleByCode(String roleCode) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找角色
+            // Find role
             Role role = roleRepository.findByTenantIdAndRoleCode(Long.valueOf(tenantId), roleCode)
-                    .orElseThrow(() -> BusinessException.of("角色不存在"));
+                    .orElseThrow(() -> BusinessException.of("Role not found"));
             
             return ApiResponse.success(convertToRoleVO(role));
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取角色失败: ", e);
-            throw BusinessException.of("获取角色失败");
+            log.error("Failed to get role: ", e);
+            throw BusinessException.of("Failed to get role");
         }
     }
     
     @Override
     public ApiResponse<List<RoleVO>> getAllRoles() {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找所有角色
+            // Find all roles
             List<Role> roles = roleRepository.findAllByTenantId(Long.valueOf(tenantId));
             List<RoleVO> roleVOs = roles.stream()
                     .map(this::convertToRoleVO)
@@ -230,36 +231,36 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(roleVOs);
             
         } catch (Exception e) {
-            log.error("获取角色列表失败: ", e);
-            throw BusinessException.of("获取角色列表失败");
+            log.error("Failed to get role list: ", e);
+            throw BusinessException.of("Failed to get role list");
         }
     }
     
     @Override
     public ApiResponse<Page<RoleVO>> getRolesByPage(Pageable pageable) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 分页查找角色
+            // Paginate roles
             Page<Role> rolePage = roleRepository.findAllByTenantId(Long.valueOf(tenantId), pageable);
             Page<RoleVO> roleVOPage = rolePage.map(this::convertToRoleVO);
             
             return ApiResponse.success(roleVOPage);
             
         } catch (Exception e) {
-            log.error("分页获取角色失败: ", e);
-            throw BusinessException.of("分页获取角色失败");
+            log.error("Failed to paginate roles: ", e);
+            throw BusinessException.of("Failed to paginate roles");
         }
     }
     
     @Override
     public ApiResponse<List<RoleVO>> getRolesByStatus(String status) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据状态查找角色
+            // Find roles by status
             List<Role> roles = roleRepository.findByTenantIdAndStatus(Long.valueOf(tenantId), status);
             List<RoleVO> roleVOs = roles.stream()
                     .map(this::convertToRoleVO)
@@ -268,18 +269,18 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(roleVOs);
             
         } catch (Exception e) {
-            log.error("根据状态获取角色失败: ", e);
-            throw BusinessException.of("根据状态获取角色失败");
+            log.error("Failed to get roles by status: ", e);
+            throw BusinessException.of("Failed to get roles by status");
         }
     }
     
     @Override
     public ApiResponse<List<RoleVO>> searchRoles(String roleName) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据角色名称搜索角色
+            // Search roles by role name
             List<Role> roles = roleRepository.findByTenantIdAndRoleNameContaining(Long.valueOf(tenantId), roleName);
             List<RoleVO> roleVOs = roles.stream()
                     .map(this::convertToRoleVO)
@@ -288,8 +289,8 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(roleVOs);
             
         } catch (Exception e) {
-            log.error("搜索角色失败: ", e);
-            throw BusinessException.of("搜索角色失败");
+            log.error("Failed to search roles: ", e);
+            throw BusinessException.of("Failed to search roles");
         }
     }
     
@@ -297,30 +298,30 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> enableRole(Long roleId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找角色
+            // Find role
             Role role = roleRepository.findById(roleId)
-                    .orElseThrow(() -> BusinessException.of("角色不存在"));
+                    .orElseThrow(() -> BusinessException.of("Role not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限操作此角色");
+                throw BusinessException.of("No permission to operate this role");
             }
             
-            // 启用角色
+            // Enable role
             role.setStatus("ACTIVE");
             roleRepository.save(role);
             
-            log.info("角色 {} 启用成功", role.getRoleName());
+            log.info("Role {} enabled successfully", role.getRoleName());
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("启用角色失败: ", e);
-            throw BusinessException.of("启用角色失败");
+            log.error("Failed to enable role: ", e);
+            throw BusinessException.of("Failed to enable role");
         }
     }
     
@@ -328,47 +329,47 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> disableRole(Long roleId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找角色
+            // Find role
             Role role = roleRepository.findById(roleId)
-                    .orElseThrow(() -> BusinessException.of("角色不存在"));
+                    .orElseThrow(() -> BusinessException.of("Role not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限操作此角色");
+                throw BusinessException.of("No permission to operate this role");
             }
             
-            // 禁用角色
+            // Disable role
             role.setStatus("INACTIVE");
             roleRepository.save(role);
             
-            log.info("角色 {} 禁用成功", role.getRoleName());
+            log.info("Role {} disabled successfully", role.getRoleName());
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("禁用角色失败: ", e);
-            throw BusinessException.of("禁用角色失败");
+            log.error("Failed to disable role: ", e);
+            throw BusinessException.of("Failed to disable role");
         }
     }
     
-    // 权限管理
+    // Permission Management
     @Override
     @Transactional
     public ApiResponse<PermissionVO> createPermission(CreatePermissionRequest request) {
         try {
-            // 设置租户上下文
+            // Set tenant context
             TenantContext.setTenantId(request.getTenantId());
             
-            // 检查权限代码是否已存在
+            // Check if permission code already exists
             if (permissionRepository.existsByTenantIdAndPermissionCode(Long.valueOf(request.getTenantId()), request.getPermissionCode())) {
-                throw BusinessException.of("权限代码已存在");
+                throw BusinessException.of("Permission code already exists");
             }
             
-            // 创建权限实体
+            // Create permission entity
             Permission permission = new Permission();
             permission.setTenantId(Long.valueOf(request.getTenantId()));
             permission.setPermissionName(request.getPermissionName());
@@ -383,17 +384,17 @@ public class PermissionServiceImpl implements PermissionService {
             permission.setIsSystem(request.getIsSystem());
             permission.setStatus("ACTIVE");
             
-            // 保存权限
+            // Save permission
             Permission savedPermission = permissionRepository.save(permission);
             
-            log.info("创建权限成功: {}", savedPermission.getPermissionName());
-            return ApiResponse.success("权限创建成功", convertToPermissionVO(savedPermission));
+            log.info("Permission created successfully: {}", savedPermission.getPermissionName());
+            return ApiResponse.success("Permission created successfully", convertToPermissionVO(savedPermission));
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("创建权限失败: ", e);
-            throw BusinessException.of("创建权限失败");
+            log.error("Failed to create permission: ", e);
+            throw BusinessException.of("Failed to create permission");
         } finally {
             TenantContext.clear();
         }
@@ -403,27 +404,27 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<PermissionVO> updatePermission(Long permissionId, UpdatePermissionRequest request) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找权限
+            // Find permission
             Permission permission = permissionRepository.findById(permissionId)
-                    .orElseThrow(() -> BusinessException.of("权限不存在"));
+                    .orElseThrow(() -> BusinessException.of("Permission not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!permission.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限操作此权限");
+                throw BusinessException.of("No permission to operate this permission");
             }
             
-            // 检查权限代码是否已被其他权限使用
+            // Check if permission code is already used by another permission
             if (request.getPermissionCode() != null && !request.getPermissionCode().equals(permission.getPermissionCode())) {
                 if (permissionRepository.existsByTenantIdAndPermissionCode(Long.valueOf(tenantId), request.getPermissionCode())) {
-                    throw BusinessException.of("权限代码已被其他权限使用");
+                    throw BusinessException.of("Permission code is already used by another permission");
                 }
                 permission.setPermissionCode(request.getPermissionCode());
             }
             
-            // 更新权限信息
+            // Update permission information
             if (request.getPermissionName() != null) {
                 permission.setPermissionName(request.getPermissionName());
             }
@@ -452,17 +453,17 @@ public class PermissionServiceImpl implements PermissionService {
                 permission.setStatus(request.getStatus());
             }
             
-            // 保存权限
+            // Save permission
             Permission updatedPermission = permissionRepository.save(permission);
             
-            log.info("更新权限成功: {}", updatedPermission.getPermissionName());
-            return ApiResponse.success("权限更新成功", convertToPermissionVO(updatedPermission));
+            log.info("Permission updated successfully: {}", updatedPermission.getPermissionName());
+            return ApiResponse.success("Permission updated successfully", convertToPermissionVO(updatedPermission));
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("更新权限失败: ", e);
-            throw BusinessException.of("更新权限失败");
+            log.error("Failed to update permission: ", e);
+            throw BusinessException.of("Failed to update permission");
         }
     }
     
@@ -470,56 +471,56 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> deletePermission(Long permissionId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找权限
+            // Find permission
             Permission permission = permissionRepository.findById(permissionId)
-                    .orElseThrow(() -> BusinessException.of("权限不存在"));
+                    .orElseThrow(() -> BusinessException.of("Permission not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!permission.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限操作此权限");
+                throw BusinessException.of("No permission to operate this permission");
             }
             
-            // 检查是否为系统权限
+            // Check if it's a system permission
             if (permission.getIsSystem()) {
-                throw BusinessException.of("系统权限不能删除");
+                throw BusinessException.of("System permissions cannot be deleted");
             }
             
-            // 检查是否有子权限
+            // Check if there are child permissions
             List<Permission> children = permissionRepository.findByTenantIdAndParentId(Long.valueOf(tenantId), permissionId);
             if (!children.isEmpty()) {
-                throw BusinessException.of("存在子权限，不能删除");
+                throw BusinessException.of("Child permissions exist, cannot delete");
             }
             
-            // 删除权限
+            // Delete permission
             permissionRepository.delete(permission);
             
-            log.info("权限 {} 删除成功", permission.getPermissionName());
+            log.info("Permission {} deleted successfully", permission.getPermissionName());
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("删除权限失败: ", e);
-            throw BusinessException.of("删除权限失败");
+            log.error("Failed to delete permission: ", e);
+            throw BusinessException.of("Failed to delete permission");
         }
     }
     
     @Override
     public ApiResponse<PermissionVO> getPermissionById(Long permissionId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找权限
+            // Find permission
             Permission permission = permissionRepository.findById(permissionId)
-                    .orElseThrow(() -> BusinessException.of("权限不存在"));
+                    .orElseThrow(() -> BusinessException.of("Permission not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!permission.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限查看此权限");
+                throw BusinessException.of("No permission to view this permission");
             }
             
             return ApiResponse.success(convertToPermissionVO(permission));
@@ -527,38 +528,38 @@ public class PermissionServiceImpl implements PermissionService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取权限失败: ", e);
-            throw BusinessException.of("获取权限失败");
+            log.error("Failed to get permission: ", e);
+            throw BusinessException.of("Failed to get permission");
         }
     }
     
     @Override
     public ApiResponse<PermissionVO> getPermissionByCode(String permissionCode) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找权限
+            // Find permission
             Permission permission = permissionRepository.findByTenantIdAndPermissionCode(Long.valueOf(tenantId), permissionCode)
-                    .orElseThrow(() -> BusinessException.of("权限不存在"));
+                    .orElseThrow(() -> BusinessException.of("Permission not found"));
             
             return ApiResponse.success(convertToPermissionVO(permission));
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取权限失败: ", e);
-            throw BusinessException.of("获取权限失败");
+            log.error("Failed to get permission: ", e);
+            throw BusinessException.of("Failed to get permission");
         }
     }
     
     @Override
     public ApiResponse<List<PermissionVO>> getAllPermissions() {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找所有权限
+            // Find all permissions
             List<Permission> permissions = permissionRepository.findAllByTenantId(Long.valueOf(tenantId));
             List<PermissionVO> permissionVOs = permissions.stream()
                     .map(this::convertToPermissionVO)
@@ -567,36 +568,36 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(permissionVOs);
             
         } catch (Exception e) {
-            log.error("获取权限列表失败: ", e);
-            throw BusinessException.of("获取权限列表失败");
+            log.error("Failed to get permission list: ", e);
+            throw BusinessException.of("Failed to get permission list");
         }
     }
     
     @Override
     public ApiResponse<Page<PermissionVO>> getPermissionsByPage(Pageable pageable) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 分页查找权限
+            // Paginate permissions
             Page<Permission> permissionPage = permissionRepository.findAllByTenantId(Long.valueOf(tenantId), pageable);
             Page<PermissionVO> permissionVOPage = permissionPage.map(this::convertToPermissionVO);
             
             return ApiResponse.success(permissionVOPage);
             
         } catch (Exception e) {
-            log.error("分页获取权限失败: ", e);
-            throw BusinessException.of("分页获取权限失败");
+            log.error("Failed to paginate permissions: ", e);
+            throw BusinessException.of("Failed to paginate permissions");
         }
     }
     
     @Override
     public ApiResponse<List<PermissionVO>> getPermissionsByType(String permissionType) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据权限类型查找权限
+            // Find permissions by permission type
             List<Permission> permissions = permissionRepository.findByTenantIdAndPermissionType(Long.valueOf(tenantId), permissionType);
             List<PermissionVO> permissionVOs = permissions.stream()
                     .map(this::convertToPermissionVO)
@@ -605,38 +606,38 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(permissionVOs);
             
         } catch (Exception e) {
-            log.error("根据权限类型获取权限失败: ", e);
-            throw BusinessException.of("根据权限类型获取权限失败");
+            log.error("Failed to get permissions by type: ", e);
+            throw BusinessException.of("Failed to get permissions by type");
         }
     }
     
     @Override
     public ApiResponse<List<PermissionVO>> getPermissionTree() {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找所有权限
+            // Find all permissions
             List<Permission> permissions = permissionRepository.findAllByTenantId(Long.valueOf(tenantId));
             
-            // 构建权限树
+            // Build permission tree
             List<PermissionVO> permissionTree = buildPermissionTree(permissions);
             
             return ApiResponse.success(permissionTree);
             
         } catch (Exception e) {
-            log.error("获取权限树失败: ", e);
-            throw BusinessException.of("获取权限树失败");
+            log.error("Failed to get permission tree: ", e);
+            throw BusinessException.of("Failed to get permission tree");
         }
     }
     
     @Override
     public ApiResponse<List<PermissionVO>> getPermissionsByStatus(String status) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据状态查找权限
+            // Find permissions by status
             List<Permission> permissions = permissionRepository.findByTenantIdAndStatus(Long.valueOf(tenantId), status);
             List<PermissionVO> permissionVOs = permissions.stream()
                     .map(this::convertToPermissionVO)
@@ -645,18 +646,18 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(permissionVOs);
             
         } catch (Exception e) {
-            log.error("根据状态获取权限失败: ", e);
-            throw BusinessException.of("根据状态获取权限失败");
+            log.error("Failed to get permissions by status: ", e);
+            throw BusinessException.of("Failed to get permissions by status");
         }
     }
     
     @Override
     public ApiResponse<List<PermissionVO>> searchPermissions(String permissionName) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据权限名称搜索权限
+            // Search permissions by permission name
             List<Permission> permissions = permissionRepository.findByTenantIdAndPermissionNameContaining(Long.valueOf(tenantId), permissionName);
             List<PermissionVO> permissionVOs = permissions.stream()
                     .map(this::convertToPermissionVO)
@@ -665,8 +666,8 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(permissionVOs);
             
         } catch (Exception e) {
-            log.error("搜索权限失败: ", e);
-            throw BusinessException.of("搜索权限失败");
+            log.error("Failed to search permissions: ", e);
+            throw BusinessException.of("Failed to search permissions");
         }
     }
     
@@ -674,30 +675,30 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> enablePermission(Long permissionId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找权限
+            // Find permission
             Permission permission = permissionRepository.findById(permissionId)
-                    .orElseThrow(() -> BusinessException.of("权限不存在"));
+                    .orElseThrow(() -> BusinessException.of("Permission not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!permission.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限操作此权限");
+                throw BusinessException.of("No permission to operate this permission");
             }
             
-            // 启用权限
+            // Enable permission
             permission.setStatus("ACTIVE");
             permissionRepository.save(permission);
             
-            log.info("权限 {} 启用成功", permission.getPermissionName());
+            log.info("Permission {} enabled successfully", permission.getPermissionName());
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("启用权限失败: ", e);
-            throw BusinessException.of("启用权限失败");
+            log.error("Failed to enable permission: ", e);
+            throw BusinessException.of("Failed to enable permission");
         }
     }
     
@@ -705,91 +706,91 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> disablePermission(Long permissionId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找权限
+            // Find permission
             Permission permission = permissionRepository.findById(permissionId)
-                    .orElseThrow(() -> BusinessException.of("权限不存在"));
+                    .orElseThrow(() -> BusinessException.of("Permission not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!permission.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限操作此权限");
+                throw BusinessException.of("No permission to operate this permission");
             }
             
-            // 禁用权限
+            // Disable permission
             permission.setStatus("INACTIVE");
             permissionRepository.save(permission);
             
-            log.info("权限 {} 禁用成功", permission.getPermissionName());
+            log.info("Permission {} disabled successfully", permission.getPermissionName());
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("禁用权限失败: ", e);
-            throw BusinessException.of("禁用权限失败");
+            log.error("Failed to disable permission: ", e);
+            throw BusinessException.of("Failed to disable permission");
         }
     }
     
-    // 角色权限分配
+    // Role Permission Assignment
     @Override
     @Transactional
     public ApiResponse<Void> assignPermissionsToRole(Long roleId, List<Long> permissionIds) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找角色
+            // Find role
             Role role = roleRepository.findById(roleId)
-                    .orElseThrow(() -> BusinessException.of("角色不存在"));
+                    .orElseThrow(() -> BusinessException.of("Role not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限操作此角色");
+                throw BusinessException.of("No permission to operate this role");
             }
             
-            // 查找权限
+            // Find permissions
             List<Permission> permissions = permissionRepository.findAllById(permissionIds);
             
-            // 验证权限是否属于同一租户
+            // Validate permissions belong to the same tenant
             for (Permission permission : permissions) {
                 if (!permission.getTenantId().equals(Long.valueOf(tenantId))) {
-                    throw BusinessException.of("权限不属于当前租户");
+                    throw BusinessException.of("Permission does not belong to the current tenant");
                 }
             }
             
-            // 分配权限
+            // Assign permissions
             role.setPermissions(permissions);
             roleRepository.save(role);
             
-            log.info("角色 {} 权限分配成功", role.getRoleName());
+            log.info("Permissions assigned to role {} successfully", role.getRoleName());
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("分配权限失败: ", e);
-            throw BusinessException.of("分配权限失败");
+            log.error("Failed to assign permissions: ", e);
+            throw BusinessException.of("Failed to assign permissions");
         }
     }
     
     @Override
     public ApiResponse<List<PermissionVO>> getRolePermissions(Long roleId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找角色
+            // Find role
             Role role = roleRepository.findById(roleId)
-                    .orElseThrow(() -> BusinessException.of("角色不存在"));
+                    .orElseThrow(() -> BusinessException.of("Role not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限查看此角色");
+                throw BusinessException.of("No permission to view this role");
             }
             
-            // 获取角色的权限
+            // Get role permissions
             List<Permission> permissions = permissionRepository.findByRoleId(Long.valueOf(tenantId), roleId);
             List<PermissionVO> permissionVOs = permissions.stream()
                     .map(this::convertToPermissionVO)
@@ -800,8 +801,8 @@ public class PermissionServiceImpl implements PermissionService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取角色权限失败: ", e);
-            throw BusinessException.of("获取角色权限失败");
+            log.error("Failed to get role permissions: ", e);
+            throw BusinessException.of("Failed to get role permissions");
         }
     }
     
@@ -809,18 +810,18 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> assignRolesToUser(AssignRoleRequest request) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!request.getTenantId().equals(tenantId)) {
-                throw BusinessException.of("无权限操作此用户");
+                throw BusinessException.of("No permission to operate this user");
             }
             
-            // 删除用户现有角色
+            // Delete existing user roles
             userRoleRepository.deleteByTenantIdAndUserId(Long.valueOf(tenantId), request.getUserId());
             
-            // 分配新角色
+            // Assign new roles
             if (request.getRoleIds() != null && !request.getRoleIds().isEmpty()) {
                 for (Long roleId : request.getRoleIds()) {
                     UserRole userRole = new UserRole();
@@ -831,24 +832,24 @@ public class PermissionServiceImpl implements PermissionService {
                 }
             }
             
-            log.info("用户 {} 角色分配成功", request.getUserId());
+            log.info("User {} roles assigned successfully", request.getUserId());
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("分配角色失败: ", e);
-            throw BusinessException.of("分配角色失败");
+            log.error("Failed to assign roles: ", e);
+            throw BusinessException.of("Failed to assign roles");
         }
     }
     
     @Override
     public ApiResponse<List<RoleVO>> getUserRoles(Long userId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 获取用户的角色
+            // Get user roles
             List<Role> roles = roleRepository.findByUserId(Long.valueOf(tenantId), userId);
             List<RoleVO> roleVOs = roles.stream()
                     .map(this::convertToRoleVO)
@@ -857,18 +858,18 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(roleVOs);
             
         } catch (Exception e) {
-            log.error("获取用户角色失败: ", e);
-            throw BusinessException.of("获取用户角色失败");
+            log.error("Failed to get user roles: ", e);
+            throw BusinessException.of("Failed to get user roles");
         }
     }
     
     @Override
     public ApiResponse<List<PermissionVO>> getUserPermissions(Long userId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 获取用户的权限
+            // Get user permissions
             List<Permission> permissions = permissionRepository.findByUserId(Long.valueOf(tenantId), userId);
             List<PermissionVO> permissionVOs = permissions.stream()
                     .map(this::convertToPermissionVO)
@@ -877,55 +878,55 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(permissionVOs);
             
         } catch (Exception e) {
-            log.error("获取用户权限失败: ", e);
-            throw BusinessException.of("获取用户权限失败");
+            log.error("Failed to get user permissions: ", e);
+            throw BusinessException.of("Failed to get user permissions");
         }
     }
     
     @Override
     public ApiResponse<Boolean> checkUserPermission(Long userId, String permissionCode) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 获取用户的权限
+            // Get user permissions
             List<Permission> permissions = permissionRepository.findByUserId(Long.valueOf(tenantId), userId);
             
-            // 检查是否有指定权限
+            // Check if user has the specified permission
             boolean hasPermission = permissions.stream()
                     .anyMatch(p -> p.getPermissionCode().equals(permissionCode) && "ACTIVE".equals(p.getStatus()));
             
             return ApiResponse.success(hasPermission);
             
         } catch (Exception e) {
-            log.error("检查用户权限失败: ", e);
-            throw BusinessException.of("检查用户权限失败");
+            log.error("Failed to check user permission: ", e);
+            throw BusinessException.of("Failed to check user permission");
         }
     }
     
     @Override
     public ApiResponse<Boolean> checkUserRole(Long userId, String roleCode) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 获取用户的角色
+            // Get user roles
             List<Role> roles = roleRepository.findByUserId(Long.valueOf(tenantId), userId);
             
-            // 检查是否有指定角色
+            // Check if user has the specified role
             boolean hasRole = roles.stream()
                     .anyMatch(r -> r.getRoleCode().equals(roleCode) && "ACTIVE".equals(r.getStatus()));
             
             return ApiResponse.success(hasRole);
             
         } catch (Exception e) {
-            log.error("检查用户角色失败: ", e);
-            throw BusinessException.of("检查用户角色失败");
+            log.error("Failed to check user role: ", e);
+            throw BusinessException.of("Failed to check user role");
         }
     }
     
     /**
-     * 将Role实体转换为RoleVO
+     * Convert Role entity to RoleVO
      */
     private RoleVO convertToRoleVO(Role role) {
         RoleVO vo = new RoleVO();
@@ -939,7 +940,7 @@ public class PermissionServiceImpl implements PermissionService {
         vo.setCreatedAt(role.getCreatedAt());
         vo.setUpdatedAt(role.getUpdatedAt());
         
-        // 转换权限列表
+        // Convert permission list
         if (role.getPermissions() != null) {
             List<PermissionVO> permissionVOs = role.getPermissions().stream()
                     .map(this::convertToPermissionVO)
@@ -951,7 +952,7 @@ public class PermissionServiceImpl implements PermissionService {
     }
     
     /**
-     * 将Permission实体转换为PermissionVO
+     * Convert Permission entity to PermissionVO
      */
     private PermissionVO convertToPermissionVO(Permission permission) {
         PermissionVO vo = new PermissionVO();
@@ -974,20 +975,20 @@ public class PermissionServiceImpl implements PermissionService {
     }
     
     /**
-     * 构建权限树
+     * Build permission tree
      */
     private List<PermissionVO> buildPermissionTree(List<Permission> permissions) {
-        // 转换为VO
+        // Convert to VO
         List<PermissionVO> permissionVOs = permissions.stream()
                 .map(this::convertToPermissionVO)
                 .collect(Collectors.toList());
         
-        // 构建父子关系映射
+        // Build parent-child relationship map
         Map<Long, List<PermissionVO>> parentChildMap = permissionVOs.stream()
                 .filter(p -> p.getParentId() != null)
                 .collect(Collectors.groupingBy(PermissionVO::getParentId));
         
-        // 设置子权限
+        // Set child permissions
         permissionVOs.forEach(vo -> {
             List<PermissionVO> children = parentChildMap.get(vo.getId());
             if (children != null) {
@@ -995,23 +996,23 @@ public class PermissionServiceImpl implements PermissionService {
             }
         });
         
-        // 返回根权限
+        // Return root permissions
         return permissionVOs.stream()
                 .filter(p -> p.getParentId() == null)
                 .collect(Collectors.toList());
     }
     
-    // 新增方法实现
+    // New method implementation
     @Override
     public ApiResponse<Page<RoleVO>> searchRolesAdvanced(RoleSearchRequest request) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 构建分页参数
+            // Build pagination parameters
             Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
             
-            // 根据搜索条件查找角色
+            // Find roles based on search criteria
             Page<Role> rolePage = null;
             
             if (StringUtils.hasText(request.getRoleName())) {
@@ -1023,7 +1024,7 @@ public class PermissionServiceImpl implements PermissionService {
             } else if (request.getIsSystem() != null) {
                 rolePage = roleRepository.findByTenantIdAndIsSystem(Long.valueOf(tenantId), request.getIsSystem(), pageable);
             } else {
-                // 默认查询所有角色
+                // Default query all roles
                 rolePage = roleRepository.findAllByTenantId(Long.valueOf(tenantId), pageable);
             }
             
@@ -1035,8 +1036,8 @@ public class PermissionServiceImpl implements PermissionService {
             }
             
         } catch (Exception e) {
-            log.error("高级搜索角色失败: ", e);
-            throw BusinessException.of("高级搜索角色失败");
+            log.error("Advanced role search failed: ", e);
+            throw BusinessException.of("Advanced role search failed");
         }
     }
     
@@ -1044,31 +1045,31 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> batchEnableRoles(List<Long> roleIds) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 批量启用角色
+            // Batch enable roles
             for (Long roleId : roleIds) {
                 Role role = roleRepository.findById(roleId)
-                        .orElseThrow(() -> BusinessException.of("角色不存在: " + roleId));
+                        .orElseThrow(() -> BusinessException.of("Role not found: " + roleId));
                 
-                // 验证租户权限
+                // Validate tenant permission
                 if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                    throw BusinessException.of("无权限操作角色: " + roleId);
+                    throw BusinessException.of("No permission to operate role: " + roleId);
                 }
                 
                 role.setStatus("ACTIVE");
                 roleRepository.save(role);
             }
             
-            log.info("批量启用角色成功: {}", roleIds);
+            log.info("Batch enable roles successful: {}", roleIds);
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("批量启用角色失败: ", e);
-            throw BusinessException.of("批量启用角色失败");
+            log.error("Batch enable roles failed: ", e);
+            throw BusinessException.of("Batch enable roles failed");
         }
     }
     
@@ -1076,31 +1077,31 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> batchDisableRoles(List<Long> roleIds) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 批量禁用角色
+            // Batch disable roles
             for (Long roleId : roleIds) {
                 Role role = roleRepository.findById(roleId)
-                        .orElseThrow(() -> BusinessException.of("角色不存在: " + roleId));
+                        .orElseThrow(() -> BusinessException.of("Role not found: " + roleId));
                 
-                // 验证租户权限
+                // Validate tenant permission
                 if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                    throw BusinessException.of("无权限操作角色: " + roleId);
+                    throw BusinessException.of("No permission to operate role: " + roleId);
                 }
                 
                 role.setStatus("INACTIVE");
                 roleRepository.save(role);
             }
             
-            log.info("批量禁用角色成功: {}", roleIds);
+            log.info("Batch disable roles successful: {}", roleIds);
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("批量禁用角色失败: ", e);
-            throw BusinessException.of("批量禁用角色失败");
+            log.error("Batch disable roles failed: ", e);
+            throw BusinessException.of("Batch disable roles failed");
         }
     }
     
@@ -1108,63 +1109,63 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> batchDeleteRoles(List<Long> roleIds) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 批量删除角色
+            // Batch delete roles
             for (Long roleId : roleIds) {
                 Role role = roleRepository.findById(roleId)
-                        .orElseThrow(() -> BusinessException.of("角色不存在: " + roleId));
+                        .orElseThrow(() -> BusinessException.of("Role not found: " + roleId));
                 
-                // 验证租户权限
+                // Validate tenant permission
                 if (!role.getTenantId().equals(Long.valueOf(tenantId))) {
-                    throw BusinessException.of("无权限操作角色: " + roleId);
+                    throw BusinessException.of("No permission to operate role: " + roleId);
                 }
                 
-                // 检查是否为系统角色
+                // Check if it's a system role
                 if (role.getIsSystem()) {
-                    throw BusinessException.of("系统角色不能删除: " + roleId);
+                    throw BusinessException.of("System roles cannot be deleted: " + roleId);
                 }
                 
                 roleRepository.delete(role);
             }
             
-            log.info("批量删除角色成功: {}", roleIds);
+            log.info("Batch delete roles successful: {}", roleIds);
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("批量删除角色失败: ", e);
-            throw BusinessException.of("批量删除角色失败");
+            log.error("Batch delete roles failed: ", e);
+            throw BusinessException.of("Batch delete roles failed");
         }
     }
     
     @Override
     public ApiResponse<Boolean> checkRoleCodeExists(String roleCode) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
             boolean exists = roleRepository.existsByTenantIdAndRoleCode(Long.valueOf(tenantId), roleCode);
             return ApiResponse.success(exists);
             
         } catch (Exception e) {
-            log.error("检查角色代码是否存在失败: ", e);
-            throw BusinessException.of("检查角色代码是否存在失败");
+            log.error("Failed to check if role code exists: ", e);
+            throw BusinessException.of("Failed to check if role code exists");
         }
     }
     
     @Override
     public ApiResponse<Page<PermissionVO>> searchPermissionsAdvanced(PermissionSearchRequest request) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 构建分页参数
+            // Build pagination parameters
             Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
             
-            // 根据搜索条件查找权限
+            // Find permissions based on search criteria
             Page<Permission> permissionPage = null;
             
             if (StringUtils.hasText(request.getPermissionName())) {
@@ -1178,7 +1179,7 @@ public class PermissionServiceImpl implements PermissionService {
             } else if (request.getIsSystem() != null) {
                 permissionPage = permissionRepository.findByTenantIdAndIsSystem(Long.valueOf(tenantId), request.getIsSystem(), pageable);
             } else {
-                // 默认查询所有权限
+                // Default query all permissions
                 permissionPage = permissionRepository.findAllByTenantId(Long.valueOf(tenantId), pageable);
             }
             
@@ -1190,8 +1191,8 @@ public class PermissionServiceImpl implements PermissionService {
             }
             
         } catch (Exception e) {
-            log.error("高级搜索权限失败: ", e);
-            throw BusinessException.of("高级搜索权限失败");
+            log.error("Advanced permission search failed: ", e);
+            throw BusinessException.of("Advanced permission search failed");
         }
     }
     
@@ -1199,31 +1200,31 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> batchEnablePermissions(List<Long> permissionIds) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 批量启用权限
+            // Batch enable permissions
             for (Long permissionId : permissionIds) {
                 Permission permission = permissionRepository.findById(permissionId)
-                        .orElseThrow(() -> BusinessException.of("权限不存在: " + permissionId));
+                        .orElseThrow(() -> BusinessException.of("Permission not found: " + permissionId));
                 
-                // 验证租户权限
+                // Validate tenant permission
                 if (!permission.getTenantId().equals(Long.valueOf(tenantId))) {
-                    throw BusinessException.of("无权限操作权限: " + permissionId);
+                    throw BusinessException.of("No permission to operate permission: " + permissionId);
                 }
                 
                 permission.setStatus("ACTIVE");
                 permissionRepository.save(permission);
             }
             
-            log.info("批量启用权限成功: {}", permissionIds);
+            log.info("Batch enable permissions successful: {}", permissionIds);
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("批量启用权限失败: ", e);
-            throw BusinessException.of("批量启用权限失败");
+            log.error("Batch enable permissions failed: ", e);
+            throw BusinessException.of("Batch enable permissions failed");
         }
     }
     
@@ -1231,31 +1232,31 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> batchDisablePermissions(List<Long> permissionIds) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 批量禁用权限
+            // Batch disable permissions
             for (Long permissionId : permissionIds) {
                 Permission permission = permissionRepository.findById(permissionId)
-                        .orElseThrow(() -> BusinessException.of("权限不存在: " + permissionId));
+                        .orElseThrow(() -> BusinessException.of("Permission not found: " + permissionId));
                 
-                // 验证租户权限
+                // Validate tenant permission
                 if (!permission.getTenantId().equals(Long.valueOf(tenantId))) {
-                    throw BusinessException.of("无权限操作权限: " + permissionId);
+                    throw BusinessException.of("No permission to operate permission: " + permissionId);
                 }
                 
                 permission.setStatus("INACTIVE");
                 permissionRepository.save(permission);
             }
             
-            log.info("批量禁用权限成功: {}", permissionIds);
+            log.info("Batch disable permissions successful: {}", permissionIds);
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("批量禁用权限失败: ", e);
-            throw BusinessException.of("批量禁用权限失败");
+            log.error("Batch disable permissions failed: ", e);
+            throw BusinessException.of("Batch disable permissions failed");
         }
     }
     
@@ -1263,73 +1264,73 @@ public class PermissionServiceImpl implements PermissionService {
     @Transactional
     public ApiResponse<Void> batchDeletePermissions(List<Long> permissionIds) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 批量删除权限
+            // Batch delete permissions
             for (Long permissionId : permissionIds) {
                 Permission permission = permissionRepository.findById(permissionId)
-                        .orElseThrow(() -> BusinessException.of("权限不存在: " + permissionId));
+                        .orElseThrow(() -> BusinessException.of("Permission not found: " + permissionId));
                 
-                // 验证租户权限
+                // Validate tenant permission
                 if (!permission.getTenantId().equals(Long.valueOf(tenantId))) {
-                    throw BusinessException.of("无权限操作权限: " + permissionId);
+                    throw BusinessException.of("No permission to operate permission: " + permissionId);
                 }
                 
-                // 检查是否为系统权限
+                // Check if it's a system permission
                 if (permission.getIsSystem()) {
-                    throw BusinessException.of("系统权限不能删除: " + permissionId);
+                    throw BusinessException.of("System permissions cannot be deleted: " + permissionId);
                 }
                 
-                // 检查是否有子权限
+                // Check if there are child permissions
                 List<Permission> children = permissionRepository.findByTenantIdAndParentId(Long.valueOf(tenantId), permissionId);
                 if (!children.isEmpty()) {
-                    throw BusinessException.of("存在子权限，不能删除: " + permissionId);
+                    throw BusinessException.of("Child permissions exist, cannot delete: " + permissionId);
                 }
                 
                 permissionRepository.delete(permission);
             }
             
-            log.info("批量删除权限成功: {}", permissionIds);
+            log.info("Batch delete permissions successful: {}", permissionIds);
             return ApiResponse.success(null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("批量删除权限失败: ", e);
-            throw BusinessException.of("批量删除权限失败");
+            log.error("Batch delete permissions failed: ", e);
+            throw BusinessException.of("Batch delete permissions failed");
         }
     }
     
     @Override
     public ApiResponse<Boolean> checkPermissionCodeExists(String permissionCode) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
             boolean exists = permissionRepository.existsByTenantIdAndPermissionCode(Long.valueOf(tenantId), permissionCode);
             return ApiResponse.success(exists);
             
         } catch (Exception e) {
-            log.error("检查权限代码是否存在失败: ", e);
-            throw BusinessException.of("检查权限代码是否存在失败");
+            log.error("Failed to check if permission code exists: ", e);
+            throw BusinessException.of("Failed to check if permission code exists");
         }
     }
     
     @Override
     public ApiResponse<PermissionStatisticsVO> getPermissionStatistics() {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 获取角色统计信息
+            // Get role statistics
             Long totalRoles = roleRepository.countByTenantId(Long.valueOf(tenantId));
             Long activeRoles = roleRepository.countByTenantIdAndStatusActive(Long.valueOf(tenantId));
             Long inactiveRoles = roleRepository.countByTenantIdAndStatusInactive(Long.valueOf(tenantId));
             Long systemRoles = roleRepository.countByTenantIdAndIsSystemTrue(Long.valueOf(tenantId));
             Long customRoles = roleRepository.countByTenantIdAndIsSystemFalse(Long.valueOf(tenantId));
             
-            // 获取权限统计信息
+            // Get permission statistics
             Long totalPermissions = permissionRepository.countByTenantId(Long.valueOf(tenantId));
             Long activePermissions = permissionRepository.countByTenantIdAndStatusActive(Long.valueOf(tenantId));
             Long inactivePermissions = permissionRepository.countByTenantIdAndStatusInactive(Long.valueOf(tenantId));
@@ -1339,7 +1340,7 @@ public class PermissionServiceImpl implements PermissionService {
             Long buttonPermissions = permissionRepository.countByTenantIdAndPermissionType(Long.valueOf(tenantId), "BUTTON");
             Long apiPermissions = permissionRepository.countByTenantIdAndPermissionType(Long.valueOf(tenantId), "API");
             
-            // 构建统计信息
+            // Build statistics
             PermissionStatisticsVO statistics = new PermissionStatisticsVO();
             statistics.setTotalRoles(totalRoles);
             statistics.setActiveRoles(activeRoles);
@@ -1358,8 +1359,8 @@ public class PermissionServiceImpl implements PermissionService {
             return ApiResponse.success(statistics);
             
         } catch (Exception e) {
-            log.error("获取权限统计信息失败: ", e);
-            throw BusinessException.of("获取权限统计信息失败");
+            log.error("Failed to get permission statistics: ", e);
+            throw BusinessException.of("Failed to get permission statistics");
         }
     }
 } 

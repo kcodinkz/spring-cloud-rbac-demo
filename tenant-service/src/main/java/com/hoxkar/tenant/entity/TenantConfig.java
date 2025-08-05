@@ -7,8 +7,9 @@ import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 
+// Tenant Config Entity
 /**
- * 租户配置实体
+ * Tenant config entity // 租户配置实体
  */
 @Data
 @NoArgsConstructor

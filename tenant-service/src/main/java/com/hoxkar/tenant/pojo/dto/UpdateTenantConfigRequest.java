@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+// Update Tenant Config Request DTO
 /**
  * 更新租户配置请求DTO
  */
@@ -15,19 +16,19 @@ import lombok.AllArgsConstructor;
 public class UpdateTenantConfigRequest {
     
     /**
-     * 配置值
+     * Config value // 配置值
      */
     private String configValue;
     
     /**
-     * 配置类型
+     * Config type // 配置类型
      */
-    @Pattern(regexp = "^(STRING|NUMBER|BOOLEAN|JSON)$", message = "配置类型只能是STRING、NUMBER、BOOLEAN或JSON")
+    @Pattern(regexp = "^(STRING|NUMBER|BOOLEAN|JSON)$", message = "Config type must be STRING, NUMBER, BOOLEAN, or JSON") // 配置类型只能是STRING、NUMBER、BOOLEAN或JSON
     private String configType;
     
     /**
-     * 配置描述
+     * Config description // 配置描述
      */
-    @Size(max = 200, message = "配置描述长度不能超过200个字符")
+    @Size(max = 200, message = "Config description length cannot exceed 200 characters") // 配置描述长度不能超过200个字符
     private String description;
 }

@@ -34,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+// File Service Implementation
 /**
  * 文件服务实现类
  */
@@ -49,34 +50,34 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public ApiResponse<FileVO> uploadFile(MultipartFile file, String description, String tags, Long uploaderId, String uploaderName) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 验证文件
+            // Validate file
             validateFile(file);
             
-            // 生成文件路径
+            // Generate file path
             String filePath = FileUtil.generateFilePath(fileStorageConfig.getRootPath(), file.getOriginalFilename());
             
-            // 创建目录
+            // Create directory
             FileUtil.createDirectories(FilenameUtils.getFullPath(filePath));
             
-            // 保存文件
+            // Save file
             File savedFile = new File(filePath);
             file.transferTo(savedFile);
             
-            // 计算文件哈希值
+            // Calculate file hash
             String fileHash = FileUtil.calculateFileHash(file);
             
-            // 检查文件是否已存在
+            // Check if file exists
             Optional<FileInfo> existingFile = fileInfoRepository.findByTenantIdAndFileHash(Long.valueOf(tenantId), fileHash);
             if (existingFile.isPresent()) {
-                // 删除刚保存的文件
+                // Delete the recently saved file
                 FileUtil.deleteFile(filePath);
-                throw BusinessException.of("文件已存在");
+                throw BusinessException.of("File already exists");
             }
             
-            // 生成缩略图（如果是图片）
+            // Generate thumbnail (if it's an image)
             String thumbnailPath = null;
             if (FileUtil.isImageFile(file.getOriginalFilename())) {
                 thumbnailPath = FileUtil.generateThumbnailPath(fileStorageConfig.getThumbnailPath(), filePath);
@@ -87,7 +88,7 @@ public class FileServiceImpl implements FileService {
                     fileStorageConfig.getThumbnail().getQuality());
             }
             
-            // 创建文件信息
+            // Create file info
             FileInfo fileInfo = new FileInfo();
             fileInfo.setTenantId(Long.valueOf(tenantId));
             fileInfo.setFileName(FilenameUtils.getName(filePath));
@@ -105,17 +106,17 @@ public class FileServiceImpl implements FileService {
             fileInfo.setTags(tags);
             fileInfo.setStatus("ACTIVE");
             
-            // 保存文件信息
+            // Save file info
             FileInfo savedFileInfo = fileInfoRepository.save(fileInfo);
             
-            log.info("文件上传成功: {}", savedFileInfo.getOriginalName());
-            return ApiResponse.success("文件上传成功", convertToVO(savedFileInfo));
+            log.info("File uploaded successfully: {}", savedFileInfo.getOriginalName());
+            return ApiResponse.success("File uploaded successfully", convertToVO(savedFileInfo));
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("文件上传失败: ", e);
-            throw BusinessException.of("文件上传失败");
+            log.error("File upload failed: ", e);
+            throw BusinessException.of("File upload failed");
         }
     }
     
@@ -132,161 +133,161 @@ public class FileServiceImpl implements FileService {
                         uploadedFiles.add(response.getData());
                     }
                 } catch (Exception e) {
-                    log.error("批量上传文件时单个文件上传失败: {}", file.getOriginalFilename(), e);
+                    log.error("Failed to upload single file during batch upload: {}", file.getOriginalFilename(), e);
                 }
             }
             
-            return ApiResponse.success("批量上传完成", uploadedFiles);
+            return ApiResponse.success("Batch upload completed", uploadedFiles);
             
         } catch (Exception e) {
-            log.error("批量上传文件失败: ", e);
-            throw BusinessException.of("批量上传文件失败");
+            log.error("Batch upload files failed: ", e);
+            throw BusinessException.of("Batch upload files failed");
         }
     }
     
     @Override
     public void downloadFile(Long fileId, HttpServletResponse response) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限下载此文件");
+                throw BusinessException.of("No permission to download this file");
             }
             
-            // 检查文件是否存在
+            // Check if file exists
             File file = new File(fileInfo.getFilePath());
             if (!file.exists()) {
-                throw BusinessException.of("文件不存在");
+                throw BusinessException.of("File not found");
             }
             
-            // 更新下载次数
+            // Update download count
             fileInfo.setDownloadCount(fileInfo.getDownloadCount() + 1);
             fileInfoRepository.save(fileInfo);
             
-            // 设置响应头
+            // Set response headers
             response.setContentType(fileInfo.getMimeType());
             response.setHeader("Content-Disposition", "attachment; filename=\"" + fileInfo.getOriginalName() + "\"");
             response.setContentLengthLong(fileInfo.getFileSize());
             
-            // 写入文件内容
+            // Write file content
             Files.copy(file.toPath(), response.getOutputStream());
             response.getOutputStream().flush();
             
-            log.info("文件下载成功: {}", fileInfo.getOriginalName());
+            log.info("File downloaded successfully: {}", fileInfo.getOriginalName());
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("文件下载失败: ", e);
-            throw BusinessException.of("文件下载失败");
+            log.error("File download failed: ", e);
+            throw BusinessException.of("File download failed");
         }
     }
     
     @Override
     public void previewFile(Long fileId, HttpServletResponse response) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限预览此文件");
+                throw BusinessException.of("No permission to preview this file");
             }
             
-            // 检查文件是否存在
+            // Check if file exists
             File file = new File(fileInfo.getFilePath());
             if (!file.exists()) {
-                throw BusinessException.of("文件不存在");
+                throw BusinessException.of("File not found");
             }
             
-            // 更新查看次数
+            // Update view count
             fileInfo.setViewCount(fileInfo.getViewCount() + 1);
             fileInfoRepository.save(fileInfo);
             
-            // 设置响应头
+            // Set response headers
             response.setContentType(fileInfo.getMimeType());
             response.setContentLengthLong(fileInfo.getFileSize());
             
-            // 写入文件内容
+            // Write file content
             Files.copy(file.toPath(), response.getOutputStream());
             response.getOutputStream().flush();
             
-            log.info("文件预览成功: {}", fileInfo.getOriginalName());
+            log.info("File previewed successfully: {}", fileInfo.getOriginalName());
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("文件预览失败: ", e);
-            throw BusinessException.of("文件预览失败");
+            log.error("File preview failed: ", e);
+            throw BusinessException.of("File preview failed");
         }
     }
     
     @Override
     public void getThumbnail(Long fileId, HttpServletResponse response) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限访问此文件");
+                throw BusinessException.of("No permission to access this file");
             }
             
-            // 检查缩略图是否存在
+            // Check if thumbnail exists
             if (fileInfo.getThumbnailPath() == null) {
-                throw BusinessException.of("缩略图不存在");
+                throw BusinessException.of("Thumbnail not found");
             }
             
             File thumbnailFile = new File(fileInfo.getThumbnailPath());
             if (!thumbnailFile.exists()) {
-                throw BusinessException.of("缩略图不存在");
+                throw BusinessException.of("Thumbnail not found");
             }
             
-            // 设置响应头
+            // Set response headers
             response.setContentType("image/jpeg");
             response.setContentLengthLong(thumbnailFile.length());
             
-            // 写入缩略图内容
+            // Write thumbnail content
             Files.copy(thumbnailFile.toPath(), response.getOutputStream());
             response.getOutputStream().flush();
             
-            log.info("缩略图获取成功: {}", fileInfo.getOriginalName());
+            log.info("Thumbnail retrieved successfully: {}", fileInfo.getOriginalName());
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("缩略图获取失败: ", e);
-            throw BusinessException.of("缩略图获取失败");
+            log.error("Thumbnail retrieval failed: ", e);
+            throw BusinessException.of("Thumbnail retrieval failed");
         }
     }
     
     @Override
     public ApiResponse<FileVO> getFileById(Long fileId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限查看此文件");
+                throw BusinessException.of("No permission to view this file");
             }
             
             return ApiResponse.success(convertToVO(fileInfo));
@@ -294,38 +295,38 @@ public class FileServiceImpl implements FileService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取文件信息失败: ", e);
-            throw BusinessException.of("获取文件信息失败");
+            log.error("Failed to get file info: ", e);
+            throw BusinessException.of("Failed to get file info");
         }
     }
     
     @Override
     public ApiResponse<FileVO> getFileByFileName(String fileName) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findByTenantIdAndFileName(Long.valueOf(tenantId), fileName)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
             return ApiResponse.success(convertToVO(fileInfo));
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取文件信息失败: ", e);
-            throw BusinessException.of("获取文件信息失败");
+            log.error("Failed to get file info: ", e);
+            throw BusinessException.of("Failed to get file info");
         }
     }
     
     @Override
     public ApiResponse<List<FileVO>> getAllFiles() {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找所有文件
+            // Find all files
             List<FileInfo> files = fileInfoRepository.findByTenantId(Long.valueOf(tenantId));
             List<FileVO> fileVOs = files.stream()
                     .map(this::convertToVO)
@@ -334,18 +335,18 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOs);
             
         } catch (Exception e) {
-            log.error("获取文件列表失败: ", e);
-            throw BusinessException.of("获取文件列表失败");
+            log.error("Failed to get file list: ", e);
+            throw BusinessException.of("Failed to get file list");
         }
     }
     
     @Override
     public ApiResponse<Page<FileVO>> getFilesByPage(Integer page, Integer size) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 分页查找文件
+            // Paginate files
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
             Page<FileInfo> filePage = fileInfoRepository.findByTenantId(Long.valueOf(tenantId), pageable);
             Page<FileVO> fileVOPage = filePage.map(this::convertToVO);
@@ -353,18 +354,18 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOPage);
             
         } catch (Exception e) {
-            log.error("分页获取文件失败: ", e);
-            throw BusinessException.of("分页获取文件失败");
+            log.error("Failed to paginate files: ", e);
+            throw BusinessException.of("Failed to paginate files");
         }
     }
     
     @Override
     public ApiResponse<List<FileVO>> getFilesByType(String fileType) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据文件类型查找文件
+            // Find files by file type
             List<FileInfo> files = fileInfoRepository.findByTenantIdAndFileType(Long.valueOf(tenantId), fileType);
             List<FileVO> fileVOs = files.stream()
                     .map(this::convertToVO)
@@ -373,18 +374,18 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOs);
             
         } catch (Exception e) {
-            log.error("根据文件类型获取文件失败: ", e);
-            throw BusinessException.of("根据文件类型获取文件失败");
+            log.error("Failed to get files by type: ", e);
+            throw BusinessException.of("Failed to get files by type");
         }
     }
     
     @Override
     public ApiResponse<Page<FileVO>> getFilesByType(String fileType, Integer page, Integer size) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据文件类型分页查找文件
+            // Paginate files by file type
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
             Page<FileInfo> filePage = fileInfoRepository.findByTenantIdAndFileType(Long.valueOf(tenantId), fileType, pageable);
             Page<FileVO> fileVOPage = filePage.map(this::convertToVO);
@@ -392,18 +393,18 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOPage);
             
         } catch (Exception e) {
-            log.error("根据文件类型分页获取文件失败: ", e);
-            throw BusinessException.of("根据文件类型分页获取文件失败");
+            log.error("Failed to paginate files by type: ", e);
+            throw BusinessException.of("Failed to paginate files by type");
         }
     }
     
     @Override
     public ApiResponse<List<FileVO>> getFilesByCategory(String category) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据文件类型分类查找文件
+            // Find files by file type category
             List<FileInfo> files = fileInfoRepository.findByTenantId(Long.valueOf(tenantId));
             List<FileVO> fileVOs = files.stream()
                     .filter(file -> FileUtil.getFileTypeCategory(file.getOriginalName()).equals(category))
@@ -413,24 +414,24 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOs);
             
         } catch (Exception e) {
-            log.error("根据文件类型分类获取文件失败: ", e);
-            throw BusinessException.of("根据文件类型分类获取文件失败");
+            log.error("Failed to get files by category: ", e);
+            throw BusinessException.of("Failed to get files by category");
         }
     }
     
     @Override
     public ApiResponse<Page<FileVO>> getFilesByCategory(String category, Integer page, Integer size) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据文件类型分类分页查找文件
+            // Paginate files by file type category
             List<FileInfo> files = fileInfoRepository.findByTenantId(Long.valueOf(tenantId));
             List<FileInfo> filteredFiles = files.stream()
                     .filter(file -> FileUtil.getFileTypeCategory(file.getOriginalName()).equals(category))
                     .collect(Collectors.toList());
             
-            // 手动分页
+            // Manual pagination
             int start = page * size;
             int end = Math.min(start + size, filteredFiles.size());
             List<FileInfo> pagedFiles = filteredFiles.subList(start, end);
@@ -439,7 +440,7 @@ public class FileServiceImpl implements FileService {
                     .map(this::convertToVO)
                     .collect(Collectors.toList());
             
-            // 创建分页对象
+            // Create pagination object
             Page<FileVO> fileVOPage = new org.springframework.data.domain.PageImpl<>(
                     fileVOs, 
                     PageRequest.of(page, size), 
@@ -449,18 +450,18 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOPage);
             
         } catch (Exception e) {
-            log.error("根据文件类型分类分页获取文件失败: ", e);
-            throw BusinessException.of("根据文件类型分类分页获取文件失败");
+            log.error("Failed to paginate files by category: ", e);
+            throw BusinessException.of("Failed to paginate files by category");
         }
     }
     
     @Override
     public ApiResponse<List<FileVO>> getFilesByUploader(Long uploaderId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据上传者ID查找文件
+            // Find files by uploader ID
             List<FileInfo> files = fileInfoRepository.findByTenantIdAndUploaderId(Long.valueOf(tenantId), uploaderId);
             List<FileVO> fileVOs = files.stream()
                     .map(this::convertToVO)
@@ -469,18 +470,18 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOs);
             
         } catch (Exception e) {
-            log.error("根据上传者获取文件失败: ", e);
-            throw BusinessException.of("根据上传者获取文件失败");
+            log.error("Failed to get files by uploader: ", e);
+            throw BusinessException.of("Failed to get files by uploader");
         }
     }
     
     @Override
     public ApiResponse<Page<FileVO>> getFilesByUploader(Long uploaderId, Integer page, Integer size) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 根据上传者ID分页查找文件
+            // Paginate files by uploader ID
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
             Page<FileInfo> filePage = fileInfoRepository.findByTenantIdAndUploaderId(Long.valueOf(tenantId), uploaderId, pageable);
             Page<FileVO> fileVOPage = filePage.map(this::convertToVO);
@@ -488,22 +489,22 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOPage);
             
         } catch (Exception e) {
-            log.error("根据上传者分页获取文件失败: ", e);
-            throw BusinessException.of("根据上传者分页获取文件失败");
+            log.error("Failed to paginate files by uploader: ", e);
+            throw BusinessException.of("Failed to paginate files by uploader");
         }
     }
     
     @Override
     public ApiResponse<Page<FileVO>> searchFiles(FileSearchRequest request) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 构建分页参数
+            // Build pagination parameters
             Sort sort = Sort.by(Sort.Direction.fromString(request.getSortDirection()), request.getSortBy());
             Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
             
-            // 根据搜索条件查找文件
+            // Find files based on search criteria
             Page<FileInfo> filePage = null;
             
             if (StringUtils.hasText(request.getFileName())) {
@@ -529,7 +530,7 @@ public class FileServiceImpl implements FileService {
                 LocalDateTime endTime = request.getEndTime() != null ? request.getEndTime() : LocalDateTime.MAX;
                 filePage = fileInfoRepository.findByTenantIdAndCreatedAtBetween(Long.valueOf(tenantId), startTime, endTime, pageable);
             } else {
-                // 默认查询所有文件
+                // Default query all files
                 filePage = fileInfoRepository.findByTenantId(Long.valueOf(tenantId), pageable);
             }
             
@@ -537,23 +538,23 @@ public class FileServiceImpl implements FileService {
                 Page<FileVO> fileVOPage = filePage.map(this::convertToVO);
                 return ApiResponse.success(fileVOPage);
             } else {
-                // 处理手动分页的情况
+                // Handle manual pagination case
                 return ApiResponse.success(Page.empty(pageable));
             }
             
         } catch (Exception e) {
-            log.error("搜索文件失败: ", e);
-            throw BusinessException.of("搜索文件失败");
+            log.error("Search files failed: ", e);
+            throw BusinessException.of("Search files failed");
         }
     }
     
     @Override
     public ApiResponse<List<FileVO>> getRecentFiles(Integer limit) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找最近上传的文件
+            // Find recently uploaded files
             Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"));
             List<FileInfo> files = fileInfoRepository.findRecentFilesByTenantId(Long.valueOf(tenantId), pageable);
             List<FileVO> fileVOs = files.stream()
@@ -563,18 +564,18 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOs);
             
         } catch (Exception e) {
-            log.error("获取最近文件失败: ", e);
-            throw BusinessException.of("获取最近文件失败");
+            log.error("Failed to get recent files: ", e);
+            throw BusinessException.of("Failed to get recent files");
         }
     }
     
     @Override
     public ApiResponse<List<FileVO>> getPopularFiles(Integer limit) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找最受欢迎的文件
+            // Find most popular files
             Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "downloadCount"));
             List<FileInfo> files = fileInfoRepository.findPopularFilesByTenantId(Long.valueOf(tenantId), pageable);
             List<FileVO> fileVOs = files.stream()
@@ -584,18 +585,18 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOs);
             
         } catch (Exception e) {
-            log.error("获取最受欢迎文件失败: ", e);
-            throw BusinessException.of("获取最受欢迎文件失败");
+            log.error("Failed to get most popular files: ", e);
+            throw BusinessException.of("Failed to get most popular files");
         }
     }
     
     @Override
     public ApiResponse<List<FileVO>> getLargestFiles(Integer limit) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找最大的文件
+            // Find largest files
             Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "fileSize"));
             List<FileInfo> files = fileInfoRepository.findLargestFilesByTenantId(Long.valueOf(tenantId), pageable);
             List<FileVO> fileVOs = files.stream()
@@ -605,8 +606,8 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(fileVOs);
             
         } catch (Exception e) {
-            log.error("获取最大文件失败: ", e);
-            throw BusinessException.of("获取最大文件失败");
+            log.error("Failed to get largest files: ", e);
+            throw BusinessException.of("Failed to get largest files");
         }
     }
     
@@ -614,19 +615,19 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public ApiResponse<FileVO> updateFile(Long fileId, String description, String tags) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限修改此文件");
+                throw BusinessException.of("No permission to modify this file");
             }
             
-            // 更新文件信息
+            // Update file info
             if (description != null) {
                 fileInfo.setDescription(description);
             }
@@ -634,17 +635,17 @@ public class FileServiceImpl implements FileService {
                 fileInfo.setTags(tags);
             }
             
-            // 保存文件信息
+            // Save file info
             FileInfo updatedFileInfo = fileInfoRepository.save(fileInfo);
             
-            log.info("文件信息更新成功: {}", updatedFileInfo.getOriginalName());
-            return ApiResponse.success("文件信息更新成功", convertToVO(updatedFileInfo));
+            log.info("File info updated successfully: {}", updatedFileInfo.getOriginalName());
+            return ApiResponse.success("File info updated successfully", convertToVO(updatedFileInfo));
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("更新文件信息失败: ", e);
-            throw BusinessException.of("更新文件信息失败");
+            log.error("Failed to update file info: ", e);
+            throw BusinessException.of("Failed to update file info");
         }
     }
     
@@ -652,31 +653,31 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public ApiResponse<Void> deleteFile(Long fileId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限删除此文件");
+                throw BusinessException.of("No permission to delete this file");
             }
             
-            // 软删除文件信息
+            // Soft delete file info
             fileInfo.setStatus("DELETED");
             fileInfo.setDeletedAt(LocalDateTime.now());
             fileInfoRepository.save(fileInfo);
             
-            log.info("文件删除成功: {}", fileInfo.getOriginalName());
-            return ApiResponse.<Void>success("文件删除成功", null);
+            log.info("File deleted successfully: {}", fileInfo.getOriginalName());
+            return ApiResponse.<Void>success("File deleted successfully", null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("删除文件失败: ", e);
-            throw BusinessException.of("删除文件失败");
+            log.error("Failed to delete file: ", e);
+            throw BusinessException.of("Failed to delete file");
         }
     }
     
@@ -684,37 +685,37 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public ApiResponse<Void> batchDeleteFiles(List<Long> fileIds) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 批量删除文件
+            // Batch delete files
             for (Long fileId : fileIds) {
                 try {
                     FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                            .orElseThrow(() -> BusinessException.of("文件不存在: " + fileId));
+                            .orElseThrow(() -> BusinessException.of("File not found: " + fileId));
                     
-                    // 验证租户权限
+                    // Validate tenant permission
                     if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                        throw BusinessException.of("无权限删除文件: " + fileId);
+                        throw BusinessException.of("No permission to delete file: " + fileId);
                     }
                     
-                    // 软删除文件信息
+                    // Soft delete file info
                     fileInfo.setStatus("DELETED");
                     fileInfo.setDeletedAt(LocalDateTime.now());
                     fileInfoRepository.save(fileInfo);
                 } catch (Exception e) {
-                    log.error("批量删除文件时单个文件删除失败: {}", fileId, e);
+                    log.error("Failed to delete single file during batch deletion: {}", fileId, e);
                 }
             }
             
-            log.info("批量删除文件成功: {}", fileIds);
-            return ApiResponse.<Void>success("批量删除文件成功", null);
+            log.info("Batch file deletion successful: {}", fileIds);
+            return ApiResponse.<Void>success("Batch file deletion successful", null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("批量删除文件失败: ", e);
-            throw BusinessException.of("批量删除文件失败");
+            log.error("Batch file deletion failed: ", e);
+            throw BusinessException.of("Batch file deletion failed");
         }
     }
     
@@ -722,31 +723,31 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public ApiResponse<Void> restoreFile(Long fileId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限恢复此文件");
+                throw BusinessException.of("No permission to restore this file");
             }
             
-            // 恢复文件信息
+            // Restore file info
             fileInfo.setStatus("ACTIVE");
             fileInfo.setDeletedAt(null);
             fileInfoRepository.save(fileInfo);
             
-            log.info("文件恢复成功: {}", fileInfo.getOriginalName());
-            return ApiResponse.<Void>success("文件恢复成功", null);
+            log.info("File restored successfully: {}", fileInfo.getOriginalName());
+            return ApiResponse.<Void>success("File restored successfully", null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("恢复文件失败: ", e);
-            throw BusinessException.of("恢复文件失败");
+            log.error("Failed to restore file: ", e);
+            throw BusinessException.of("Failed to restore file");
         }
     }
     
@@ -754,54 +755,54 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public ApiResponse<Void> batchRestoreFiles(List<Long> fileIds) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 批量恢复文件
+            // Batch restore files
             for (Long fileId : fileIds) {
                 try {
                     FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                            .orElseThrow(() -> BusinessException.of("文件不存在: " + fileId));
+                            .orElseThrow(() -> BusinessException.of("File not found: " + fileId));
                     
-                    // 验证租户权限
+                    // Validate tenant permission
                     if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                        throw BusinessException.of("无权限恢复文件: " + fileId);
+                        throw BusinessException.of("No permission to restore file: " + fileId);
                     }
                     
-                    // 恢复文件信息
+                    // Restore file info
                     fileInfo.setStatus("ACTIVE");
                     fileInfo.setDeletedAt(null);
                     fileInfoRepository.save(fileInfo);
                 } catch (Exception e) {
-                    log.error("批量恢复文件时单个文件恢复失败: {}", fileId, e);
+                    log.error("Failed to restore single file during batch restoration: {}", fileId, e);
                 }
             }
             
-            log.info("批量恢复文件成功: {}", fileIds);
-            return ApiResponse.<Void>success("批量恢复文件成功", null);
+            log.info("Batch file restoration successful: {}", fileIds);
+            return ApiResponse.<Void>success("Batch file restoration successful", null);
             
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("批量恢复文件失败: ", e);
-            throw BusinessException.of("批量恢复文件失败");
+            log.error("Batch file restoration failed: ", e);
+            throw BusinessException.of("Batch file restoration failed");
         }
     }
     
     @Override
     public ApiResponse<FileStatisticsVO> getFileStatistics() {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             Long tenantIdLong = Long.valueOf(tenantId);
             
-            // 计算本月开始时间
+            // Calculate start of month
             LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
             
-            // 计算今日开始时间
+            // Calculate start of today
             LocalDateTime startOfToday = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
             
-            // 获取统计信息
+            // Get statistics
             Long totalFiles = fileInfoRepository.countByTenantId(tenantIdLong);
             Long activeFiles = fileInfoRepository.countByTenantIdAndStatus(tenantIdLong, "ACTIVE");
             Long deletedFiles = fileInfoRepository.countByTenantIdAndStatus(tenantIdLong, "DELETED");
@@ -809,21 +810,21 @@ public class FileServiceImpl implements FileService {
             Long filesUploadedThisMonth = fileInfoRepository.countByTenantIdAndCreatedAtBetween(tenantIdLong, startOfMonth, LocalDateTime.now());
             Long filesUploadedToday = fileInfoRepository.countByTenantIdAndCreatedAtBetween(tenantIdLong, startOfToday, LocalDateTime.now());
             
-            // 计算本月上传文件大小
+            // Calculate file size uploaded this month
             Long fileSizeUploadedThisMonth = 0L;
             List<FileInfo> filesThisMonth = fileInfoRepository.findByTenantIdAndCreatedAtBetween(tenantIdLong, startOfMonth, LocalDateTime.now());
             for (FileInfo file : filesThisMonth) {
                 fileSizeUploadedThisMonth += file.getFileSize();
             }
             
-            // 计算今日上传文件大小
+            // Calculate file size uploaded today
             Long fileSizeUploadedToday = 0L;
             List<FileInfo> filesToday = fileInfoRepository.findByTenantIdAndCreatedAtBetween(tenantIdLong, startOfToday, LocalDateTime.now());
             for (FileInfo file : filesToday) {
                 fileSizeUploadedToday += file.getFileSize();
             }
             
-            // 计算总下载次数和查看次数
+            // Calculate total downloads and views
             Long totalDownloads = 0L;
             Long totalViews = 0L;
             List<FileInfo> allFiles = fileInfoRepository.findByTenantId(tenantIdLong);
@@ -832,10 +833,10 @@ public class FileServiceImpl implements FileService {
                 totalViews += file.getViewCount();
             }
             
-            // 计算平均文件大小
+            // Calculate average file size
             Long averageFileSize = activeFiles > 0 ? totalFileSize / activeFiles : 0L;
             
-            // 构建统计信息
+            // Build statistics
             FileStatisticsVO statistics = new FileStatisticsVO();
             statistics.setTotalFiles(totalFiles);
             statistics.setActiveFiles(activeFiles);
@@ -856,39 +857,39 @@ public class FileServiceImpl implements FileService {
             return ApiResponse.success(statistics);
             
         } catch (Exception e) {
-            log.error("获取文件统计信息失败: ", e);
-            throw BusinessException.of("获取文件统计信息失败");
+            log.error("Failed to get file statistics: ", e);
+            throw BusinessException.of("Failed to get file statistics");
         }
     }
     
     @Override
     public ApiResponse<Boolean> checkFileExists(String fileName) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
             boolean exists = fileInfoRepository.findByTenantIdAndFileName(Long.valueOf(tenantId), fileName).isPresent();
             return ApiResponse.success(exists);
             
         } catch (Exception e) {
-            log.error("检查文件是否存在失败: ", e);
-            throw BusinessException.of("检查文件是否存在失败");
+            log.error("Failed to check if file exists: ", e);
+            throw BusinessException.of("Failed to check if file exists");
         }
     }
     
     @Override
     public ApiResponse<String> getDownloadUrl(Long fileId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限访问此文件");
+                throw BusinessException.of("No permission to access this file");
             }
             
             String downloadUrl = "/api/files/" + fileId + "/download";
@@ -897,24 +898,24 @@ public class FileServiceImpl implements FileService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取下载链接失败: ", e);
-            throw BusinessException.of("获取下载链接失败");
+            log.error("Failed to get download URL: ", e);
+            throw BusinessException.of("Failed to get download URL");
         }
     }
     
     @Override
     public ApiResponse<String> getPreviewUrl(Long fileId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限访问此文件");
+                throw BusinessException.of("No permission to access this file");
             }
             
             String previewUrl = "/api/files/" + fileId + "/preview";
@@ -923,28 +924,28 @@ public class FileServiceImpl implements FileService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取预览链接失败: ", e);
-            throw BusinessException.of("获取预览链接失败");
+            log.error("Failed to get preview URL: ", e);
+            throw BusinessException.of("Failed to get preview URL");
         }
     }
     
     @Override
     public ApiResponse<String> getThumbnailUrl(Long fileId) {
         try {
-            // 获取当前租户ID
+            // Get current tenant ID
             String tenantId = TenantContext.getRequiredTenantId();
             
-            // 查找文件信息
+            // Find file info
             FileInfo fileInfo = fileInfoRepository.findById(fileId)
-                    .orElseThrow(() -> BusinessException.of("文件不存在"));
+                    .orElseThrow(() -> BusinessException.of("File not found"));
             
-            // 验证租户权限
+            // Validate tenant permission
             if (!fileInfo.getTenantId().equals(Long.valueOf(tenantId))) {
-                throw BusinessException.of("无权限访问此文件");
+                throw BusinessException.of("No permission to access this file");
             }
             
             if (fileInfo.getThumbnailPath() == null) {
-                throw BusinessException.of("缩略图不存在");
+                throw BusinessException.of("Thumbnail not found");
             }
             
             String thumbnailUrl = "/api/files/" + fileId + "/thumbnail";
@@ -953,30 +954,30 @@ public class FileServiceImpl implements FileService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("获取缩略图链接失败: ", e);
-            throw BusinessException.of("获取缩略图链接失败");
+            log.error("Failed to get thumbnail URL: ", e);
+            throw BusinessException.of("Failed to get thumbnail URL");
         }
     }
     
     /**
-     * 验证文件
+     * Validate file
      */
     private void validateFile(MultipartFile file) {
         if (file.isEmpty()) {
-            throw BusinessException.of("文件不能为空");
+            throw BusinessException.of("File cannot be empty");
         }
         
         if (!FileUtil.isAllowedFileType(file.getOriginalFilename(), fileStorageConfig.getAllowedTypes())) {
-            throw BusinessException.of("不支持的文件类型");
+            throw BusinessException.of("Unsupported file type");
         }
         
         if (!FileUtil.isFileSizeValid(file.getSize(), fileStorageConfig.getMaxSize())) {
-            throw BusinessException.of("文件大小超过限制");
+            throw BusinessException.of("File size exceeds limit");
         }
     }
     
     /**
-     * 将FileInfo转换为FileVO
+     * Convert FileInfo to FileVO
      */
     private FileVO convertToVO(FileInfo fileInfo) {
         FileVO vo = new FileVO();
@@ -1004,7 +1005,7 @@ public class FileServiceImpl implements FileService {
         vo.setUpdatedAt(fileInfo.getUpdatedAt());
         vo.setDeletedAt(fileInfo.getDeletedAt());
         
-        // 设置URL
+        // Set URLs
         vo.setFileUrl("/api/files/" + fileInfo.getId() + "/preview");
         vo.setDownloadUrl("/api/files/" + fileInfo.getId() + "/download");
         vo.setPreviewUrl("/api/files/" + fileInfo.getId() + "/preview");

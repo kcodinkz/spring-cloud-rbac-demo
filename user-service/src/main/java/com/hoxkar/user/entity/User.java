@@ -7,8 +7,9 @@ import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 
+// User Entity
 /**
- * 用户实体
+ * User entity // 用户实体
  */
 @Data
 @NoArgsConstructor

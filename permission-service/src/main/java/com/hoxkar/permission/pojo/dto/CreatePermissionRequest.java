@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+// Create Permission Request DTO
 /**
  * 创建权限请求DTO
  */
@@ -16,69 +17,69 @@ import lombok.AllArgsConstructor;
 public class CreatePermissionRequest {
     
     /**
-     * 租户ID
+     * Tenant ID // 租户ID
      */
-    @NotBlank(message = "租户ID不能为空")
+    @NotBlank(message = "Tenant ID cannot be empty") // 租户ID不能为空
     private String tenantId;
     
     /**
-     * 权限名称
+     * Permission name // 权限名称
      */
-    @NotBlank(message = "权限名称不能为空")
-    @Size(max = 50, message = "权限名称长度不能超过50个字符")
+    @NotBlank(message = "Permission name cannot be empty") // 权限名称不能为空
+    @Size(max = 50, message = "Permission name length cannot exceed 50 characters") // 权限名称长度不能超过50个字符
     private String permissionName;
     
     /**
-     * 权限代码
+     * Permission code // 权限代码
      */
-    @NotBlank(message = "权限代码不能为空")
-    @Pattern(regexp = "^[A-Z_]+$", message = "权限代码只能包含大写字母和下划线")
-    @Size(max = 50, message = "权限代码长度不能超过50个字符")
+    @NotBlank(message = "Permission code cannot be empty") // 权限代码不能为空
+    @Pattern(regexp = "^[A-Z_]+$", message = "Permission code can only contain uppercase letters and underscores") // 权限代码只能包含大写字母和下划线
+    @Size(max = 50, message = "Permission code length cannot exceed 50 characters") // 权限代码长度不能超过50个字符
     private String permissionCode;
     
     /**
-     * 权限类型
+     * Permission type // 权限类型
      */
-    @NotBlank(message = "权限类型不能为空")
-    @Pattern(regexp = "^(MENU|BUTTON|API)$", message = "权限类型只能是MENU、BUTTON或API")
+    @NotBlank(message = "Permission type cannot be empty") // 权限类型不能为空
+    @Pattern(regexp = "^(MENU|BUTTON|API)$", message = "Permission type must be MENU, BUTTON, or API") // 权限类型只能是MENU、BUTTON或API
     private String permissionType;
     
     /**
-     * 父级权限ID
+     * Parent permission ID // 父级权限ID
      */
     private Long parentId;
     
     /**
-     * 路径
+     * Path // 路径
      */
-    @Size(max = 200, message = "路径长度不能超过200个字符")
+    @Size(max = 200, message = "Path length cannot exceed 200 characters") // 路径长度不能超过200个字符
     private String path;
     
     /**
-     * 组件
+     * Component // 组件
      */
-    @Size(max = 200, message = "组件长度不能超过200个字符")
+    @Size(max = 200, message = "Component length cannot exceed 200 characters") // 组件长度不能超过200个字符
     private String component;
     
     /**
-     * 图标
+     * Icon // 图标
      */
-    @Size(max = 50, message = "图标长度不能超过50个字符")
+    @Size(max = 50, message = "Icon length cannot exceed 50 characters") // 图标长度不能超过50个字符
     private String icon;
     
     /**
-     * 排序
+     * Sort order // 排序
      */
     private Integer sortOrder;
     
     /**
-     * 权限描述
+     * Permission description // 权限描述
      */
-    @Size(max = 200, message = "权限描述长度不能超过200个字符")
+    @Size(max = 200, message = "Permission description length cannot exceed 200 characters") // 权限描述长度不能超过200个字符
     private String description;
     
     /**
-     * 是否为系统权限
+     * Is system permission // 是否为系统权限
      */
     private Boolean isSystem = false;
 

@@ -19,42 +19,43 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+// File Utility Class
 /**
- * 文件工具类
+ * File utility class // 文件工具类
  */
 @Slf4j
 @Component
 public class FileUtil {
     
     /**
-     * 图片文件类型
+     * Image file types
      */
     private static final List<String> IMAGE_TYPES = Arrays.asList(
             "jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp"
     );
     
     /**
-     * 文档文件类型
+     * Document file types
      */
     private static final List<String> DOCUMENT_TYPES = Arrays.asList(
             "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv"
     );
     
     /**
-     * 压缩文件类型
+     * Archive file types
      */
     private static final List<String> ARCHIVE_TYPES = Arrays.asList(
             "zip", "rar", "7z", "tar", "gz"
     );
     
     /**
-     * 生成文件存储路径
+     * Generate file storage path
      */
     public static String generateFilePath(String rootPath, String originalFilename) {
         String extension = FilenameUtils.getExtension(originalFilename);
         String fileName = UUID.randomUUID().toString() + "." + extension;
         
-        // 按年月日组织目录结构
+        // Organize directory structure by year, month, and day
         LocalDateTime now = LocalDateTime.now();
         String datePath = now.format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         
@@ -62,7 +63,7 @@ public class FileUtil {
     }
     
     /**
-     * 生成缩略图路径
+     * Generate thumbnail path
      */
     public static String generateThumbnailPath(String thumbnailPath, String filePath) {
         String fileName = FilenameUtils.getName(filePath);
@@ -73,7 +74,7 @@ public class FileUtil {
     }
     
     /**
-     * 创建目录
+     * Create directories
      */
     public static void createDirectories(String path) throws IOException {
         Path dirPath = Paths.get(path);
@@ -83,7 +84,7 @@ public class FileUtil {
     }
     
     /**
-     * 检查文件类型是否允许
+     * Check if file type is allowed
      */
     public static boolean isAllowedFileType(String filename, List<String> allowedTypes) {
         String extension = FilenameUtils.getExtension(filename).toLowerCase();
@@ -91,7 +92,7 @@ public class FileUtil {
     }
     
     /**
-     * 检查文件大小是否在限制范围内
+     * Check if file size is within limits
      */
     public static boolean isFileSizeValid(long fileSize, long maxSizeMB) {
         long maxSizeBytes = maxSizeMB * 1024 * 1024;
@@ -99,7 +100,7 @@ public class FileUtil {
     }
     
     /**
-     * 获取文件类型分类
+     * Get file type category
      */
     public static String getFileTypeCategory(String filename) {
         String extension = FilenameUtils.getExtension(filename).toLowerCase();
@@ -116,7 +117,7 @@ public class FileUtil {
     }
     
     /**
-     * 计算文件MD5哈希值
+     * Calculate file MD5 hash
      */
     public static String calculateFileHash(File file) throws IOException {
         try {
@@ -130,12 +131,12 @@ public class FileUtil {
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new IOException("MD5算法不可用", e);
+            throw new IOException("MD5 algorithm not available", e);
         }
     }
     
     /**
-     * 计算MultipartFile的MD5哈希值
+     * Calculate MD5 hash for MultipartFile
      */
     public static String calculateFileHash(MultipartFile file) throws IOException {
         try {
@@ -149,12 +150,12 @@ public class FileUtil {
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new IOException("MD5算法不可用", e);
+            throw new IOException("MD5 algorithm not available", e);
         }
     }
     
     /**
-     * 生成缩略图
+     * Generate thumbnail
      */
     public static void generateThumbnail(String sourcePath, String targetPath, int width, int height, double quality) throws IOException {
         try {
@@ -163,13 +164,13 @@ public class FileUtil {
                     .outputQuality(quality)
                     .toFile(targetPath);
         } catch (IOException e) {
-            log.error("生成缩略图失败: {}", e.getMessage());
+            log.error("Failed to generate thumbnail: {}", e.getMessage());
             throw e;
         }
     }
     
     /**
-     * 检查是否为图片文件
+     * Check if it's an image file
      */
     public static boolean isImageFile(String filename) {
         String extension = FilenameUtils.getExtension(filename).toLowerCase();
@@ -177,7 +178,7 @@ public class FileUtil {
     }
     
     /**
-     * 获取文件大小的可读格式
+     * Get readable file size
      */
     public static String getReadableFileSize(long size) {
         if (size <= 0) return "0 B";
@@ -189,20 +190,20 @@ public class FileUtil {
     }
     
     /**
-     * 删除文件
+     * Delete file
      */
     public static boolean deleteFile(String filePath) {
         try {
             File file = new File(filePath);
             return file.exists() && file.delete();
         } catch (Exception e) {
-            log.error("删除文件失败: {}", e.getMessage());
+            log.error("Failed to delete file: {}", e.getMessage());
             return false;
         }
     }
     
     /**
-     * 获取MIME类型
+     * Get MIME type
      */
     public static String getMimeType(String filename) {
         String extension = FilenameUtils.getExtension(filename).toLowerCase();

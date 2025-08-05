@@ -7,8 +7,9 @@ import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 
+// Tenant Entity
 /**
- * 租户实体
+ * Tenant entity // 租户实体
  */
 @Data
 @NoArgsConstructor

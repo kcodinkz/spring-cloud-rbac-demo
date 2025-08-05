@@ -6,58 +6,50 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
+// File Storage Configuration
 /**
- * 文件存储配置
+ * File storage configuration // 文件存储配置
  */
 @Data
 @Configuration
 @ConfigurationProperties(prefix = "file.storage")
 public class FileStorageConfig {
-    
     /**
-     * 文件存储根目录
+     * Root directory for file storage // 文件存储根目录
      */
     private String rootPath = "./uploads";
-    
     /**
-     * 临时文件目录
+     * Temporary file directory // 临时文件目录
      */
     private String tempPath = "./temp";
-    
     /**
-     * 缩略图目录
+     * Thumbnail directory // 缩略图目录
      */
     private String thumbnailPath = "./thumbnails";
-    
     /**
-     * 允许的文件类型
+     * Allowed file types // 允许的文件类型
      */
     private List<String> allowedTypes;
-    
     /**
-     * 最大文件大小 (MB)
+     * Maximum file size (MB) // 最大文件大小 (MB)
      */
     private Long maxSize = 100L;
-    
     /**
-     * 缩略图配置
+     * Thumbnail configuration // 缩略图配置
      */
     private ThumbnailConfig thumbnail = new ThumbnailConfig();
-    
     @Data
     public static class ThumbnailConfig {
         /**
-         * 缩略图宽度
+         * Thumbnail width // 缩略图宽度
          */
         private Integer width = 200;
-        
         /**
-         * 缩略图高度
+         * Thumbnail height // 缩略图高度
          */
         private Integer height = 200;
-        
         /**
-         * 缩略图质量 (0.0-1.0)
+         * Thumbnail quality (0.0-1.0) // 缩略图质量 (0.0-1.0)
          */
         private Double quality = 0.8;
     }

@@ -19,19 +19,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.List;
 
+// Permission Validation Aspect
 /**
- * 权限验证切面
+ * Permission validation aspect // 权限验证切面
  */
 @Slf4j
 @Aspect
 @Component
 @RequiredArgsConstructor
 public class PermissionAspect {
-    
     private final PermissionServiceClient permissionServiceClient;
-    
     /**
-     * 权限验证切面
+     * Permission validation aspect // 权限验证切面
      */
     @Before("@annotation(requiresPermission)")
     public void checkPermission(JoinPoint joinPoint, RequiresPermission requiresPermission) {
@@ -40,29 +39,24 @@ public class PermissionAspect {
             if (permissions.length == 0) {
                 return;
             }
-            
             Long userId = getCurrentUserId();
             if (userId == null) {
-                throw new BusinessException("用户未登录");
+                throw new BusinessException("User not logged in"); // 用户未登录
             }
-            
             boolean hasPermission = checkUserPermissions(userId, permissions, requiresPermission.logic());
             if (!hasPermission) {
                 throw new BusinessException(requiresPermission.message());
             }
-            
-            log.debug("权限验证通过 - 用户: {}, 权限: {}", userId, Arrays.toString(permissions));
-            
+            log.debug("Permission validation passed - User: {}, Permissions: {}", userId, Arrays.toString(permissions)); // 权限验证通过
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("权限验证失败", e);
-            throw new BusinessException("权限验证失败");
+            log.error("Permission validation failed", e); // 权限验证失败
+            throw new BusinessException("Permission validation failed"); // 权限验证失败
         }
     }
-    
     /**
-     * 角色验证切面
+     * Role validation aspect // 角色验证切面
      */
     @Before("@annotation(requiresRole)")
     public void checkRole(JoinPoint joinPoint, RequiresRole requiresRole) {
@@ -71,51 +65,42 @@ public class PermissionAspect {
             if (roles.length == 0) {
                 return;
             }
-            
             Long userId = getCurrentUserId();
             if (userId == null) {
-                throw new BusinessException("用户未登录");
+                throw new BusinessException("User not logged in"); // 用户未登录
             }
-            
             boolean hasRole = checkUserRoles(userId, roles, requiresRole.logic());
             if (!hasRole) {
                 throw new BusinessException(requiresRole.message());
             }
-            
-            log.debug("角色验证通过 - 用户: {}, 角色: {}", userId, Arrays.toString(roles));
-            
+            log.debug("Role validation passed - User: {}, Roles: {}", userId, Arrays.toString(roles)); // 角色验证通过
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("角色验证失败", e);
-            throw new BusinessException("角色验证失败");
+            log.error("Role validation failed", e); // 角色验证失败
+            throw new BusinessException("Role validation failed"); // 角色验证失败
         }
     }
-    
     /**
-     * 租户验证切面
+     * Tenant validation aspect // 租户验证切面
      */
     @Before("@annotation(requiresTenant)")
     public void checkTenant(JoinPoint joinPoint, RequiresTenant requiresTenant) {
         try {
             String tenantId = TenantContext.getTenantId();
-            
             if (requiresTenant.required() && (tenantId == null || tenantId.trim().isEmpty())) {
                 throw new BusinessException(requiresTenant.message());
             }
-            
-            log.debug("租户验证通过 - 租户: {}", tenantId);
-            
+            log.debug("Tenant validation passed - Tenant: {}", tenantId); // 租户验证通过
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("租户验证失败", e);
-            throw new BusinessException("租户验证失败");
+            log.error("Tenant validation failed", e); // 租户验证失败
+            throw new BusinessException("Tenant validation failed"); // 租户验证失败
         }
     }
-    
     /**
-     * 获取权限数组
+     * Get permission array // 获取权限数组
      */
     private String[] getPermissions(RequiresPermission requiresPermission) {
         if (requiresPermission.permissions().length > 0) {
@@ -123,9 +108,8 @@ public class PermissionAspect {
         }
         return new String[]{requiresPermission.value()};
     }
-    
     /**
-     * 获取角色数组
+     * Get role array // 获取角色数组
      */
     private String[] getRoles(RequiresRole requiresRole) {
         if (requiresRole.roles().length > 0) {
@@ -133,9 +117,8 @@ public class PermissionAspect {
         }
         return new String[]{requiresRole.value()};
     }
-    
     /**
-     * 获取当前用户ID
+     * Get current user ID // 获取当前用户ID
      */
     private Long getCurrentUserId() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
@@ -146,20 +129,19 @@ public class PermissionAspect {
                 try {
                     return Long.valueOf(userIdStr);
                 } catch (NumberFormatException e) {
-                    log.warn("无效的用户ID: {}", userIdStr);
+                    log.warn("Invalid user ID: {}", userIdStr); // 无效的用户ID
                 }
             }
         }
         return null;
     }
-    
     /**
-     * 检查用户权限
+     * Check user permissions // 检查用户权限
      */
     private boolean checkUserPermissions(Long userId, String[] permissions, RequiresPermission.LogicType logic) {
         try {
             if (logic == RequiresPermission.LogicType.AND) {
-                // 需要所有权限
+                // All permissions required // 需要所有权限
                 for (String permission : permissions) {
                     var response = permissionServiceClient.checkUserPermission(userId, permission);
                     if (!Boolean.TRUE.equals(response.getData())) {
@@ -168,7 +150,7 @@ public class PermissionAspect {
                 }
                 return true;
             } else {
-                // 需要任一权限
+                // Any permission required // 需要任一权限
                 for (String permission : permissions) {
                     var response = permissionServiceClient.checkUserPermission(userId, permission);
                     if (Boolean.TRUE.equals(response.getData())) {
@@ -178,18 +160,17 @@ public class PermissionAspect {
                 return false;
             }
         } catch (Exception e) {
-            log.error("检查用户权限失败", e);
+            log.error("Check user permission failed", e); // 检查用户权限失败
             return false;
         }
     }
-    
     /**
-     * 检查用户角色
+     * Check user roles // 检查用户角色
      */
     private boolean checkUserRoles(Long userId, String[] roles, RequiresRole.LogicType logic) {
         try {
             if (logic == RequiresRole.LogicType.AND) {
-                // 需要所有角色
+                // All roles required // 需要所有角色
                 for (String role : roles) {
                     var response = permissionServiceClient.checkUserRole(userId, role);
                     if (!Boolean.TRUE.equals(response.getData())) {
@@ -198,7 +179,7 @@ public class PermissionAspect {
                 }
                 return true;
             } else {
-                // 需要任一角色
+                // Any role required // 需要任一角色
                 for (String role : roles) {
                     var response = permissionServiceClient.checkUserRole(userId, role);
                     if (Boolean.TRUE.equals(response.getData())) {
@@ -208,7 +189,7 @@ public class PermissionAspect {
                 return false;
             }
         } catch (Exception e) {
-            log.error("检查用户角色失败", e);
+            log.error("Check user role failed", e); // 检查用户角色失败
             return false;
         }
     }
